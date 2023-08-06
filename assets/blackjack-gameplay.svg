@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="964" height="1760" viewBox="0 0 964 1760" role="img" aria-labelledby="title desc">
+  <title id="title">Blackjack CLI gameplay after two rounds</title>
+  <desc id="desc">Colored Blackjack terminal output showing Matt playing two rounds with two AI players.</desc>
+  <rect width="964" height="1760" fill="#303848"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" fill="#f0f0f0">
+    <text x="16" y="35" font-size="22">♠ Blackjack ♠</text>
+    <text x="16" y="88" font-weight="700">Hit, stand, or double down. Closest to 21 without going over wins.</text>
+    <text x="8" y="143">[Number of human players (1–2): 1</text>
+    <text x="8" y="169">[Name for human player 1 (max 25 characters): Matt</text>
+    <text x="8" y="195">[Number of AI players (0–3): 2</text>
+    <text x="20" y="247">🃏 Starting deck count: 3 (156 cards).</text>
+    <text x="55" y="300" fill="#7ed7d8">╭─ 🃏 ROUND 1 · CARDS DEALT ──────────────────────────────</text>
+    <text x="22" y="327">│ 🎩 <tspan fill="#e0bc4c">Dealer  8♣ ?? (hidden)</tspan></text>
+    <text x="22" y="354">│ 🧍 Matt  10♠ 9♠ (19)</text>
+    <text x="22" y="381">│ 🤖 AI 1  Q♠ K♥ (20)</text>
+    <text x="22" y="408">│ 🤖 AI 2  5♥ 9♥ (14)</text>
+    <text x="22" y="435">╰────────────────────────────────────────────────────────</text>
+    <text x="8" y="480">[Matt, [H]it, [S]tand, or [D]ouble Down? s</text>
+    <text x="16" y="532">AI actions: AI 1: Stand  |  AI 2: Hit</text>
+    <text x="55" y="584" fill="#7ed7d8">╭─ 🃏 ROUND 1 · TABLE UPDATE ─────────────────────────────</text>
+    <text x="22" y="611">│ 🎩 <tspan fill="#e0bc4c">Dealer  8♣ K♦ (18)</tspan></text>
+    <text x="22" y="638">│ 🧍 Matt  10♠ 9♠ (19) · <tspan fill="#79c779">Win 🏆</tspan></text>
+    <text x="22" y="665">│ 🤖 AI 1  Q♠ K♥ (20) · <tspan fill="#79c779">Win 🏆</tspan></text>
+    <text x="22" y="692">│ 🤖 AI 2  5♥ 9♥ 10♥ (24) · <tspan fill="#d95445">💀 BUST</tspan></text>
+    <text x="22" y="719">╰────────────────────────────────────────────────────────</text>
+    <text x="55" y="771" fill="#7ed7d8">╭─ 📊 STANDINGS · AFTER ROUND 1 ───────────────────────────</text>
+    <text x="38" y="798">│ PLAYER          W   L   P</text>
+    <text x="38" y="825">│ ─────────────────────────</text>
+    <text x="38" y="852">│ 🎩 Dealer       1   2   0</text>
+    <text x="38" y="879">│ 🧍 Matt         1   0   0</text>
+    <text x="38" y="906">│ 🤖 AI 1         1   0   0</text>
+    <text x="38" y="933">│ 🤖 AI 2         0   1   0</text>
+    <text x="38" y="960">╰─────────────────────────</text>
+    <text x="8" y="1010">[Play another round? [y/N] y</text>
+    <text x="55" y="1062" fill="#7ed7d8">╭─ 🃏 ROUND 2 · CARDS DEALT ──────────────────────────────</text>
+    <text x="22" y="1089">│ 🎩 <tspan fill="#e0bc4c">Dealer  2♦ ?? (hidden)</tspan></text>
+    <text x="22" y="1116">│ 🧍 Matt  8♦ 2♣ (10)</text>
+    <text x="22" y="1143">│ 🤖 AI 1  Q♦ 2♦ (12)</text>
+    <text x="22" y="1170">│ 🤖 AI 2  8♥ 8♣ (16)</text>
+    <text x="22" y="1197">╰────────────────────────────────────────────────────────</text>
+    <text x="8" y="1242">[Matt, [H]it, [S]tand, or [D]ouble Down? d</text>
+    <text x="22" y="1295">🃏 Matt doubled down and drew 3♥ · Hand: 8♦ 2♣ 3♥ (13)</text>
+    <text x="16" y="1347">AI actions: AI 1: Hit  |  AI 2: Hit</text>
+    <text x="55" y="1399" fill="#7ed7d8">╭─ 🃏 ROUND 2 · TABLE UPDATE ─────────────────────────────</text>
+    <text x="22" y="1426">│ 🎩 <tspan fill="#e0bc4c">Dealer  2♦ A♠ 5♥ (18)</tspan></text>
+    <text x="22" y="1453">│ 🧍 Matt  8♦ 2♣ 3♥ (13) · <tspan fill="#d95445">Loss ☠️</tspan></text>
+    <text x="22" y="1480">│ 🤖 AI 1  Q♦ 2♦ 10♦ (22) · <tspan fill="#d95445">💀 BUST</tspan></text>
+    <text x="22" y="1507">│ 🤖 AI 2  8♥ 8♣ 9♦ (25) · <tspan fill="#d95445">💀 BUST</tspan></text>
+    <text x="22" y="1534">╰────────────────────────────────────────────────────────</text>
+    <text x="55" y="1586" fill="#7ed7d8">╭─ 📊 STANDINGS · AFTER ROUND 2 ───────────────────────────</text>
+    <text x="38" y="1613">│ PLAYER          W   L   P</text>
+    <text x="38" y="1640">│ ─────────────────────────</text>
+    <text x="38" y="1667">│ 🎩 Dealer       4   2   0</text>
+    <text x="38" y="1694">│ 🧍 Matt         1   1   0</text>
+    <text x="38" y="1721">│ 🤖 AI 1         1   1   0</text>
+    <text x="38" y="1748">│ 🤖 AI 2         0   2   0</text>
+  </g>
+</svg>
