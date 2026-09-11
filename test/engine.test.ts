@@ -122,17 +122,20 @@ test("AI players double down on an initial total of 11", () => {
   assert.equal(chooseAiAction([card("5"), card("6"), card("A")], card("10")), "Hit");
 });
 
-test("standings record every player result and the dealer inverse", () => {
-  const state = createGame({ humanNames: ["Ada"], aiCount: 1 }, { random: () => 0.5 });
+test("standings record every player result, rank players, and keep the dealer first", () => {
+  const state = createGame({ humanNames: ["Ada", "Grace"], aiCount: 1 }, { random: () => 0.5 });
   state.phase = "complete";
-  state.outcomes = { "human-1": "win", "ai-1": "push" };
   const standings = createStandings(state);
 
+  state.outcomes = { "human-1": "win", "human-2": "win", "ai-1": "win" };
+  recordRound(standings, state);
+  state.outcomes = { "human-1": "win", "human-2": "push", "ai-1": "lose" };
   recordRound(standings, state);
 
   assert.deepEqual(standings, [
-    { id: "dealer", name: "Dealer", wins: 0, losses: 1, pushes: 1 },
-    { id: "human-1", name: "Ada", wins: 1, losses: 0, pushes: 0 },
-    { id: "ai-1", name: "AI 1", wins: 0, losses: 0, pushes: 1 },
+    { id: "dealer", name: "Dealer", wins: 1, losses: 4, pushes: 1 },
+    { id: "human-1", name: "Ada", wins: 2, losses: 0, pushes: 0 },
+    { id: "human-2", name: "Grace", wins: 1, losses: 0, pushes: 1 },
+    { id: "ai-1", name: "AI 1", wins: 1, losses: 1, pushes: 0 },
   ]);
 });
