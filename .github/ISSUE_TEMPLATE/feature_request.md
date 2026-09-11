@@ -1,9 +1,9 @@
 ---
 name: 🚀 Feature Request
-description: Suggest a new idea or improvement for this project.
+about: Suggest a new idea or improvement for this project.
 title: "[Feature]: "
 labels: ["enhancement"]
-assignees: ["your-github-username"]
+assignees: ["matt22"]
 ---
 
 <!-- 
