@@ -2,7 +2,7 @@
 
 A vanilla multiplayer blackjack game with a command-line interface and a reusable TypeScript game engine.
 
-This first release supports one or two human players, zero to three AI players, and up to five total players at one table. There is no betting yet. The CLI keeps win, loss, and push standings for the current session.
+This first release supports one or two human players, zero to three AI players, and up to five total players at one table. Every player starts with a $1,000 bankroll and places a bet each round. The CLI keeps win, loss, and push standings for the current session.
 
 ## Play
 
@@ -37,12 +37,21 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 - Each player and the dealer receive two cards.
 - Players may Hit, Stand, or Double Down on their initial two cards.
-- Double Down draws exactly one card and then stands. Betting is not yet tracked.
+- Double Down draws exactly one card and then stands.
 - Aces count as 1 or 11, whichever produces the best hand.
 - A hand over 21 busts; a total of 21 stands automatically.
 - The dealer hits below 17 and stands on every 17 or higher.
 - Each player independently wins, loses, or pushes against the dealer.
 - Human names must contain 1–25 characters after surrounding whitespace is removed.
+
+## Betting
+
+- Every human and AI player starts the session with $1,000 in chips.
+- Before each round, human players choose a bet up to their available chips, or press Enter to bet the standard $100.
+- AI players bet conservatively — the standard $100, or their whole stack if it's smaller — and never count cards.
+- A win pays 1:1 and a push returns the bet; a loss forfeits it.
+- Double Down automatically doubles the player's starting bet for that hand and is only offered when the player has enough chips to cover it.
+- A player with no chips left sits out the round.
 
 ## Architecture
 
@@ -89,9 +98,8 @@ The following features are intentionally deferred to future commits.
 ### Betting
 
 - Enable or disable betting.
-- Set starting chip balances and table betting limits.
+- Configure starting chip balances and table betting limits.
 - Select a blackjack payout ratio, such as 3:2 or 6:5.
-- Use virtual chips only.
 
 ### Table Setup
 

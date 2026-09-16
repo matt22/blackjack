@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  STANDARD_BET,
+  STARTING_CHIPS,
   applyAction,
   createDeck,
   createGame,
   getPublicState,
   scoreHand,
+  validateBet,
   validateSetup,
   type Card,
 } from "../src/engine.js";
-import { chooseAiAction } from "../src/ai.js";
+import { chooseAiAction, chooseAiBet } from "../src/ai.js";
 import { createStandings, recordRound } from "../src/standings.js";
 
 const card = (rank: Card["rank"], suit: Card["suit"] = "Spades"): Card => ({ rank, suit });
@@ -120,6 +123,88 @@ test("double down is rejected after a player has hit", () => {
 test("AI players double down on an initial total of 11", () => {
   assert.equal(chooseAiAction([card("5"), card("6")], card("10")), "Double Down");
   assert.equal(chooseAiAction([card("5"), card("6"), card("A")], card("10")), "Hit");
+});
+
+test("players start with the default chip stack and standard bet", () => {
+  const state = createGame({ humanNames: ["Ada"], aiCount: 1 }, { random: () => 0.5 });
+  for (const player of state.players) {
+    assert.equal(player.bet, STANDARD_BET);
+    assert.equal(player.chips, STARTING_CHIPS - STANDARD_BET);
+  }
+});
+
+test("validateBet enforces positive whole bets within available chips", () => {
+  assert.throws(() => validateBet(0, 500), /greater than zero/);
+  assert.throws(() => validateBet(-10, 500), /greater than zero/);
+  assert.throws(() => validateBet(1.5, 500), /whole number/);
+  assert.throws(() => validateBet(600, 500), /exceed available chips/);
+  assert.doesNotThrow(() => validateBet(500, 500));
+  assert.throws(() => validateBet(1, 0), /No chips available/);
+  assert.doesNotThrow(() => validateBet(0, 0));
+});
+
+test("a winning bet doubles the player's stake and a push returns it", () => {
+  const scriptedDeck = [
+    card("10"), // dealer hit -> busts at 26
+    card("6"),  // dealer second card
+    card("8"),  // player 2 second card
+    card("K"),  // player 1 second card
+    card("10"), // dealer up card
+    card("9"),  // player 2 first card
+    card("K"),  // player 1 first card
+  ];
+  const state = createGame(
+    { humanNames: ["Ada", "Grace"], aiCount: 0 },
+    { deck: scriptedDeck, bets: { "human-1": 200, "human-2": 50 } },
+  );
+  applyAction(state, "human-1", "Stand");
+  applyAction(state, "human-2", "Stand");
+  assert.deepEqual(state.outcomes, { "human-1": "win", "human-2": "win" });
+  assert.equal(state.players[0]?.chips, STARTING_CHIPS - 200 + 400);
+  assert.equal(state.players[1]?.chips, STARTING_CHIPS - 50 + 100);
+});
+
+test("doubling down doubles the bet and is rejected without enough chips", () => {
+  const scriptedDeck = [
+    card("10"), // dealer hit -> busts
+    card("K"),  // double-down card
+    card("6"),  // dealer second
+    card("5"),  // player second
+    card("10"), // dealer first
+    card("6"),  // player first
+  ];
+  const state = createGame(
+    { humanNames: ["Ada"], aiCount: 0 },
+    { deck: scriptedDeck, chips: { "human-1": 300 }, bets: { "human-1": 100 } },
+  );
+  assert.equal(state.players[0]?.chips, 200);
+  applyAction(state, "human-1", "Double Down");
+  assert.equal(state.players[0]?.bet, 200);
+  assert.equal(state.players[0]?.chips, 100 + 400);
+});
+
+test("doubling down throws when the extra stake would exceed available chips", () => {
+  const scriptedDeck = [
+    card("6"),
+    card("10"),
+    card("6"),
+    card("7"),
+    card("K"),
+  ];
+  const state = createGame(
+    { humanNames: ["Ada"], aiCount: 0 },
+    { deck: scriptedDeck, chips: { "human-1": 150 }, bets: { "human-1": 100 } },
+  );
+  assert.throws(
+    () => applyAction(state, "human-1", "Double Down"),
+    /exceed the player's available funds/,
+  );
+});
+
+test("AI bets the standard amount, capped at its remaining chips", () => {
+  assert.equal(chooseAiBet(1000), STANDARD_BET);
+  assert.equal(chooseAiBet(40), 40);
+  assert.equal(chooseAiBet(0), 0);
 });
 
 test("standings record every player result, rank players, and keep the dealer first", () => {

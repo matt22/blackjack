@@ -4,6 +4,8 @@ export const MAX_PLAYERS = 5;
 export const MAX_NAME_LENGTH = 25;
 export const CARDS_PER_DECK = 52;
 export const MID_ROUND_RESHUFFLE_THRESHOLD = 20;
+export const STARTING_CHIPS = 1000;
+export const STANDARD_BET = 100;
 
 export const SUITS = ["Clubs", "Diamonds", "Hearts", "Spades"] as const;
 export const RANKS = [
@@ -30,6 +32,8 @@ export interface Player {
   hand: Card[];
   status: PlayerStatus;
   doubledDown: boolean;
+  chips: number;
+  bet: number;
 }
 
 export interface Dealer {
@@ -72,6 +76,10 @@ export interface GameOptions {
   random?: () => number;
   deck?: Card[];
   enableEmergencyReshuffle?: boolean;
+  /** Bankroll available to each player before this round's bet is placed, keyed by player id. Defaults to STARTING_CHIPS. */
+  chips?: Record<string, number>;
+  /** Wager placed by each player for this round, keyed by player id. Defaults to the lesser of STANDARD_BET and that player's chips. */
+  bets?: Record<string, number>;
 }
 
 export function createDeck(): Card[] {
@@ -134,6 +142,17 @@ export function validateSetup(setup: GameSetup): void {
   for (const name of setup.humanNames) validateName(name);
 }
 
+/** A bet of 0 is only valid when the player has no chips left to wager, i.e. they sit out the round. */
+export function validateBet(bet: number, availableChips: number): void {
+  if (!Number.isInteger(bet)) throw new Error("Bet must be a whole number.");
+  if (availableChips === 0) {
+    if (bet !== 0) throw new Error("No chips available to bet.");
+    return;
+  }
+  if (bet <= 0) throw new Error("Bet must be greater than zero.");
+  if (bet > availableChips) throw new Error("Bet cannot exceed available chips.");
+}
+
 export function validateName(name: string): void {
   if (name.trim().length === 0) throw new Error("Player name cannot be empty.");
   if ([...name.trim()].length > MAX_NAME_LENGTH) {
@@ -168,6 +187,8 @@ function settle(state: GameState): void {
       else if (dealerBust || playerScore > dealerScore) outcome = "win";
       else if (playerScore < dealerScore) outcome = "lose";
       else outcome = "push";
+      if (outcome === "win") player.chips += player.bet * 2;
+      else if (outcome === "push") player.chips += player.bet;
       return [player.id, outcome];
     }),
   );
@@ -199,23 +220,24 @@ export function createGame(
   options: GameOptions = {},
 ): GameState {
   validateSetup(setup);
+  const playerFromId = (id: string, name: string, kind: PlayerKind): Player => {
+    const startingChips = options.chips?.[id] ?? STARTING_CHIPS;
+    const bet = options.bets?.[id] ?? Math.min(STANDARD_BET, startingChips);
+    validateBet(bet, startingChips);
+    return {
+      id,
+      name,
+      kind,
+      hand: [],
+      status: "playing",
+      doubledDown: false,
+      chips: startingChips - bet,
+      bet,
+    };
+  };
   const players: Player[] = [
-    ...setup.humanNames.map((name, index) => ({
-      id: `human-${index + 1}`,
-      name: name.trim(),
-      kind: "human" as const,
-      hand: [],
-      status: "playing" as const,
-      doubledDown: false,
-    })),
-    ...Array.from({ length: setup.aiCount }, (_, index) => ({
-      id: `ai-${index + 1}`,
-      name: `AI ${index + 1}`,
-      kind: "ai" as const,
-      hand: [],
-      status: "playing" as const,
-      doubledDown: false,
-    })),
+    ...setup.humanNames.map((name, index) => playerFromId(`human-${index + 1}`, name.trim(), "human")),
+    ...Array.from({ length: setup.aiCount }, (_, index) => playerFromId(`ai-${index + 1}`, `AI ${index + 1}`, "ai")),
   ];
 
   const state: GameState = {
@@ -259,6 +281,11 @@ export function applyAction(state: GameState, playerId: string, action: Action):
     if (player.hand.length !== 2) {
       throw new Error("Double Down is only allowed on a player's initial two cards.");
     }
+    if (player.chips < player.bet) {
+      throw new Error("Doubling down would exceed the player's available funds.");
+    }
+    player.chips -= player.bet;
+    player.bet *= 2;
     player.doubledDown = true;
     player.hand.push(draw(state));
     updateStatus(player);
