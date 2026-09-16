@@ -2,6 +2,17 @@
 
 All notable changes to Blackjack are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-09-15
+
+### Added
+
+- A betting engine: every human and AI player starts with a $1,000 bankroll and places a bet each round, up to their available chips.
+- Human players choose a bet each round, or press Enter to bet the standard $100; invalid or non-whole-number amounts are rejected and re-prompted.
+- AI players bet the standard $100 (or their whole stack if smaller) without card counting.
+- Double Down automatically doubles the player's starting bet and is only offered when they have enough chips to cover it.
+- A rebuy-or-leave prompt for human players who run out of chips; AI players automatically leave the table when they go broke.
+- An explicit "end the game" prompt once every human player has left the table, instead of the usual "play another round" prompt.
+
 ## [0.1.0] — 2026-09-06
 
 ### Added

@@ -144,7 +144,7 @@ async function askBet(name: string, availableChips: number): Promise<number> {
     const raw = (
       await rl.question(`${name}, place your bet (chips: $${availableChips}, Enter for $${STANDARD_BET}): `)
     ).trim();
-    const bet = raw === "" ? Math.min(STANDARD_BET, availableChips) : Number.parseInt(raw, 10);
+    const bet = raw === "" ? Math.min(STANDARD_BET, availableChips) : Number(raw);
     try {
       validateBet(bet, availableChips);
       return bet;
