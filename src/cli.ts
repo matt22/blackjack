@@ -18,7 +18,7 @@ import {
   type GameState,
   type Outcome,
 } from "./engine.js";
-import { createStandings, recordRound, type Standing } from "./standings.js";
+import { createStandings, rankByMoney, recordRound, type Standing } from "./standings.js";
 
 const SUIT_SYMBOL: Record<Card["suit"], string> = {
   Clubs: "♣",
@@ -49,46 +49,197 @@ function handText(hand: readonly (Card | null)[]): string {
   return hand.map(cardText).join(" ");
 }
 
-function outcomeText(outcome: Outcome, bet: number): string {
-  if (outcome === "win") return paint(`Win 🏆 (+$${bet})`, ANSI.green);
-  if (outcome === "lose") return paint(`Loss ☠️ (-$${bet})`, ANSI.red);
-  return paint("Push ⚖️ ($0)", ANSI.yellow);
+// Ranks are 1 character wide except "10" — right-padding to width 2 keeps every suit
+// symbol flush at the same column, so a 2 and a 10 line up. The hidden-card placeholder
+// gets the same 1-char-rank shape (" ??") so it doesn't sit 1 column off from real cards.
+function tableCardText(card: Card | null): string {
+  return card ? `${card.rank.padStart(2)}${SUIT_SYMBOL[card.suit]}` : " ??";
 }
 
-function divider(title: string): string {
-  return paint(`╭─ ${title} ${"─".repeat(Math.max(1, 56 - title.length))}`, ANSI.cyan);
+function tableCardCells(hand: readonly (Card | null)[], columnCount: number): string[] {
+  const cells = hand.map(tableCardText);
+  while (cells.length < columnCount) cells.push("");
+  return cells;
+}
+
+// "Loss", "Push", and "Bust" are all 4 letters; "Win" and "Bet" pad up to match so every
+// result's trailing emoji lands in the same column instead of trailing the shorter words.
+const RESULT_WORD_WIDTH = 4;
+
+interface ResultInfo {
+  word: string;
+  emoji: string;
+  sign: "+" | "-" | "";
+  digits: string;
+  color: string | null;
+}
+
+function outcomeInfo(outcome: Outcome, bet: number): ResultInfo {
+  if (outcome === "win") return { word: "Win", emoji: "🏆", sign: "+", digits: String(bet), color: ANSI.green };
+  if (outcome === "lose") return { word: "Loss", emoji: "☠️", sign: "-", digits: String(bet), color: ANSI.red };
+  return { word: "Push", emoji: "⚖️", sign: "", digits: "0", color: ANSI.yellow };
+}
+
+/** Renders a result word (padded flush with its emoji) and a sign+$+digits amount, so both stay column-aligned across rows. */
+function formatResult(info: ResultInfo, digitWidth: number): { result: string; amount: string } {
+  const result = info.emoji ? `${info.word.padEnd(RESULT_WORD_WIDTH)} ${info.emoji}` : info.word;
+  const amount = `${info.sign || " "}$${info.digits.padStart(digitWidth)}`;
+  return { result, amount };
+}
+
+const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
+// U+FE0F (variation selector-16) forces emoji-style rendering but occupies no column of its
+// own — counting it would overstate a line's true width by 1 for every icon it contains.
+const VS16_PATTERN = /️/g;
+
+/** Length as it will actually appear in the terminal, ignoring invisible ANSI color codes and VS16. */
+function visibleLength(text: string): number {
+  return text.replace(ANSI_PATTERN, "").replace(VS16_PATTERN, "").length;
+}
+
+/** Top border of a box, sized so its total width matches `innerWidth` (the content width after "│ "). */
+function divider(title: string, innerWidth: number): string {
+  const dashCount = Math.max(1, innerWidth - visibleLength(title) - 2);
+  return paint(`╭─ ${title} ${"─".repeat(dashCount)}`, ANSI.cyan);
+}
+
+// The trailing U+FE0F forces wide emoji-style rendering, so every icon occupies a consistent
+// column width across terminals — without it, some fonts render 🎩 narrower than 🤖 or 👤,
+// throwing off the padding-based alignment of the columns that follow.
+function playerIcon(kind: "dealer" | "human" | "ai"): string {
+  const icon = kind === "dealer" ? "🎩" : kind === "ai" ? "🤖" : "👤";
+  return `${icon}️`;
 }
 
 function showTable(state: GameState, title = "🎴 TABLE"): void {
   const view = getPublicState(state);
   const dealerScore = view.dealer.score === null ? "hidden" : String(view.dealer.score);
   const isComplete = state.phase === "complete";
-  const dealerStatus = isComplete && state.dealer.status === "busted" ? " 💀 BUST" : "";
+  const dealerBusted = isComplete && state.dealer.status === "busted";
   const seatedPlayers = view.players.filter((player) => player.bet > 0);
   const sittingOut = view.players.filter((player) => player.bet === 0);
-  const seats = [
-    paint(`🎩 Dealer  ${handText(view.dealer.hand)} (${dealerScore})${dealerStatus}`, ANSI.yellow),
-    ...seatedPlayers.map((player) => {
-      const outcome = state.outcomes[player.id];
-      const status = player.status === "busted" ? " 💀 BUST" : "";
-      const result = isComplete && outcome ? ` · ${outcomeText(outcome, player.bet)}` : ` · bet $${player.bet}`;
-      const row = `${player.kind === "ai" ? "🤖" : "👤"} ${player.name}  ${handText(player.hand)} (${player.score})${status}${result} · 💰$${player.chips}`;
-      return player.status === "busted" ? paint(row, ANSI.red) : row;
-    }),
-    ...(sittingOut.length > 0
-      ? [paint(`🚪 Sitting out: ${sittingOut.map((player) => player.name).join(", ")}`, ANSI.gray)]
-      : []),
+
+  const cardColumns = Math.max(2, view.dealer.hand.length, ...seatedPlayers.map((player) => player.hand.length));
+
+  const playerResults: ResultInfo[] = seatedPlayers.map((player) => {
+    const outcome = state.outcomes[player.id];
+    if (player.status === "busted") {
+      return { word: "Bust", emoji: "💀", sign: "-", digits: String(player.bet), color: null };
+    }
+    if (isComplete && outcome) return outcomeInfo(outcome, player.bet);
+    return { word: "Bet", emoji: "", sign: "", digits: String(player.bet), color: null };
+  });
+  const digitWidth = Math.max(1, ...playerResults.map((info) => info.digits.length));
+
+  const dealerRow = [
+    `${playerIcon("dealer")} Dealer`,
+    ...tableCardCells(view.dealer.hand, cardColumns),
+    `(${dealerScore})`,
+    dealerBusted ? formatResult({ word: "Bust", emoji: "💀", sign: "", digits: "", color: null }, 0).result : "",
+    "",
+    "",
+  ].map((cell) => paint(cell, ANSI.yellow));
+
+  const playerRows = seatedPlayers.map((player, index) => {
+    const info = playerResults[index];
+    if (!info) throw new Error(`Missing result info for ${player.name}.`);
+    const busted = player.status === "busted";
+    const { result, amount } = formatResult(info, digitWidth);
+    const cells = [
+      `${playerIcon(player.kind === "ai" ? "ai" : "human")} ${player.name}`,
+      ...tableCardCells(player.hand, cardColumns),
+      `(${player.score})`,
+      info.color ? paint(result, info.color) : result,
+      info.color ? paint(amount, info.color) : amount,
+      `💰$${player.chips}`,
+    ];
+    return busted ? cells.map((cell) => paint(cell, ANSI.red)) : cells;
+  });
+
+  const cardHeaders = ["HAND", ...Array(cardColumns - 1).fill("")];
+  const cardAligns: Align[] = Array(cardColumns).fill("left");
+  const lines = buildBox(
+    title,
+    ["PLAYER", ...cardHeaders, "SCORE", "RESULT", "AMOUNT", "CHIPS"],
+    ["left", ...cardAligns, "right", "left", "right", "left"],
+    [dealerRow, ...playerRows],
+  );
+  if (sittingOut.length > 0) {
+    const names = sittingOut.map((player) => player.name).join(", ");
+    lines.splice(lines.length - 1, 0, `│ ${paint(`🚪 Sitting out: ${names}`, ANSI.gray)}`);
+  }
+  output.write(`\n${lines.join("\n")}\n`);
+}
+
+function standingIcon(standing: Standing): string {
+  return playerIcon(standing.id === "dealer" ? "dealer" : standing.id.startsWith("ai-") ? "ai" : "human");
+}
+
+type Align = "left" | "right";
+
+function padCell(text: string, width: number, align: Align): string {
+  const gap = " ".repeat(Math.max(0, width - visibleLength(text)));
+  return align === "right" ? `${gap}${text}` : `${text}${gap}`;
+}
+
+/** Builds a bordered box whose column widths, and therefore total width, follow the widest header or cell in each column. */
+function buildBox(title: string, headers: string[], aligns: Align[], rows: string[][]): string[] {
+  const widths = headers.map((header, col) =>
+    Math.max(visibleLength(header), ...rows.map((row) => visibleLength(row[col] ?? ""))),
+  );
+  const formatRow = (cells: string[]) =>
+    `│ ${cells.map((cell, col) => padCell(cell, widths[col] ?? 0, aligns[col] ?? "left")).join("  ")}`;
+  const headerLine = formatRow(headers);
+  const innerWidth = visibleLength(headerLine) - 2;
+  return [
+    divider(title, innerWidth),
+    headerLine,
+    `│ ${"─".repeat(innerWidth)}`,
+    ...rows.map(formatRow),
+    `╰${"─".repeat(innerWidth + 1)}`,
   ];
-  output.write(`\n${divider(title)}\n${seats.map((seat) => `│ ${seat}`).join("\n")}\n╰${"─".repeat(58)}\n`);
+}
+
+function standingsLines(standings: readonly Standing[], round: number): string[] {
+  const rows = standings.map((standing) => [
+    `${standingIcon(standing)} ${standing.name}`,
+    String(standing.wins),
+    String(standing.losses),
+    String(standing.pushes),
+  ]);
+  return buildBox(
+    `📊 STANDINGS · AFTER ROUND ${round}`,
+    ["PLAYER", "W", "L", "P"],
+    ["left", "right", "right", "right"],
+    rows,
+  );
 }
 
 function showStandings(standings: readonly Standing[], round: number): void {
-  const nameWidth = Math.max(12, ...standings.map((standing) => [...standing.name].length + 3));
-  const rows = standings.map((standing) => {
-    const icon = standing.id === "dealer" ? "🎩" : standing.id.startsWith("ai-") ? "🤖" : "👤";
-    return `│ ${(icon + " " + standing.name).padEnd(nameWidth)} ${String(standing.wins).padStart(2)}  ${String(standing.losses).padStart(2)}  ${String(standing.pushes).padStart(2)}`;
-  });
-  output.write(`\n${divider(`📊 STANDINGS · AFTER ROUND ${round}`)}\n│ ${"PLAYER".padEnd(nameWidth)}  W   L   P\n│ ${"─".repeat(nameWidth + 11)}\n${rows.join("\n")}\n╰${"─".repeat(nameWidth + 11)}\n`);
+  output.write(`\n${standingsLines(standings, round).join("\n")}\n`);
+}
+
+function moneyRankingLines(standings: readonly Standing[]): string[] {
+  const ranked = rankByMoney(standings);
+  const rows = ranked.map((standing, index) => [`${index + 1}.`, `${standingIcon(standing)} ${standing.name}`]);
+  return buildBox("💰 MONEY RANKING", ["", "PLAYER"], ["right", "left"], rows);
+}
+
+/** Prints two boxed tables side by side, padding the shorter one to match line counts. */
+function showSideBySide(left: string[], right: string[]): void {
+  const leftWidth = Math.max(...left.map(visibleLength));
+  const height = Math.max(left.length, right.length);
+  const lines: string[] = [];
+  for (let index = 0; index < height; index += 1) {
+    const leftLine = left[index] ?? "";
+    const padding = " ".repeat(Math.max(0, leftWidth - visibleLength(leftLine)));
+    lines.push(`${leftLine}${padding}   ${right[index] ?? ""}`);
+  }
+  output.write(`\n${lines.join("\n")}\n`);
+}
+
+function showFinalStandings(standings: readonly Standing[], round: number): void {
+  showSideBySide(standingsLines(standings, round), moneyRankingLines(standings));
 }
 
 function showDraw(player: GameState["players"][number], label = "drew"): void {
@@ -295,6 +446,7 @@ async function main(): Promise<void> {
     }
     round += 1;
   }
+  showFinalStandings(standings, round - 1);
   output.write("\nThanks for playing!\n");
 }
 

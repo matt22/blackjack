@@ -4,9 +4,14 @@ All notable changes to Blackjack are recorded here. The format follows [Keep a C
 
 ## [0.1.2] — 2026-09-17
 
+### Added
+
+- A money-won leaderboard shown alongside the win/loss/push standings when you exit the game.
+
 ### Changed
 
 - Player names are now capped at 15 characters (previously 25).
+- Round tables (dealt hands and results) now render as fully aligned columns — per-card, result, amount, and chip values all line up — instead of free-form text.
 
 ## [0.1.1] — 2026-09-15
 

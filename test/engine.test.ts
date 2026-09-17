@@ -218,9 +218,9 @@ test("standings record every player result, rank players, and keep the dealer fi
   recordRound(standings, state);
 
   assert.deepEqual(standings, [
-    { id: "dealer", name: "Dealer", wins: 1, losses: 4, pushes: 1 },
-    { id: "human-1", name: "Ada", wins: 2, losses: 0, pushes: 0 },
-    { id: "human-2", name: "Grace", wins: 1, losses: 0, pushes: 1 },
-    { id: "ai-1", name: "AI 1", wins: 1, losses: 1, pushes: 0 },
+    { id: "dealer", name: "Dealer", wins: 1, losses: 4, pushes: 1, netWinnings: -300 },
+    { id: "human-1", name: "Ada", wins: 2, losses: 0, pushes: 0, netWinnings: 200 },
+    { id: "human-2", name: "Grace", wins: 1, losses: 0, pushes: 1, netWinnings: 100 },
+    { id: "ai-1", name: "AI 1", wins: 1, losses: 1, pushes: 0, netWinnings: 0 },
   ]);
 });
