@@ -33,7 +33,7 @@ test("enforces table and name limits", () => {
   assert.throws(() => validateSetup({ humanNames: ["A", "B", "C"], aiCount: 0 }));
   assert.throws(() => validateSetup({ humanNames: ["A"], aiCount: 4 }));
   assert.throws(() => validateSetup({ humanNames: [""], aiCount: 0 }));
-  assert.throws(() => validateSetup({ humanNames: ["x".repeat(26)], aiCount: 0 }));
+  assert.throws(() => validateSetup({ humanNames: ["x".repeat(16)], aiCount: 0 }));
   assert.doesNotThrow(() => validateSetup({ humanNames: ["A", "B"], aiCount: 3 }));
 });
 

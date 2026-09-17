@@ -2,6 +2,12 @@
 
 All notable changes to Blackjack are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-09-17
+
+### Changed
+
+- Player names are now capped at 15 characters (previously 25).
+
 ## [0.1.1] — 2026-09-15
 
 ### Added

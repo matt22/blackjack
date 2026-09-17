@@ -1,7 +1,7 @@
 export const MAX_HUMAN_PLAYERS = 2;
 export const MAX_AI_PLAYERS = 3;
 export const MAX_PLAYERS = 5;
-export const MAX_NAME_LENGTH = 25;
+export const MAX_NAME_LENGTH = 15;
 export const CARDS_PER_DECK = 52;
 export const MID_ROUND_RESHUFFLE_THRESHOLD = 20;
 export const STARTING_CHIPS = 1000;
