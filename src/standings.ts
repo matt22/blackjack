@@ -46,11 +46,6 @@ function compareRankings(left: Standing, right: Standing): number {
   );
 }
 
-/** Ranks standings by money won, highest first. */
-export function rankByMoney(standings: readonly Standing[]): Standing[] {
-  return [...standings].sort((left, right) => right.netWinnings - left.netWinnings);
-}
-
 /** Keeps the dealer first while ranking the other standings by their records. */
 export function rankStandings(standings: Standing[]): void {
   const dealer = standings.find((standing) => standing.id === "dealer");

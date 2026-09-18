@@ -18,7 +18,7 @@ import {
   type GameState,
   type Outcome,
 } from "./engine.js";
-import { createStandings, rankByMoney, recordRound, type Standing } from "./standings.js";
+import { createStandings, recordRound, type Standing } from "./standings.js";
 
 const SUIT_SYMBOL: Record<Card["suit"], string> = {
   Clubs: "♣",
@@ -87,6 +87,17 @@ function formatResult(info: ResultInfo, digitWidth: number): { result: string; a
   return { result, amount };
 }
 
+/** Formats a running total as sign+$+digits, e.g. for the dealer's money that can go negative. */
+function formatSignedAmount(amount: number): string {
+  const sign = amount > 0 ? "+" : amount < 0 ? "-" : " ";
+  return `${sign}$${Math.abs(amount)}`;
+}
+
+/** Formats a money standing, e.g. for the final money ranking. Only negative amounts (the dealer's) get a sign. */
+function formatMoney(amount: number): string {
+  return amount < 0 ? `-$${Math.abs(amount)}` : `$${amount}`;
+}
+
 const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
 // U+FE0F (variation selector-16) forces emoji-style rendering but occupies no column of its
 // own — counting it would overstate a line's true width by 1 for every icon it contains.
@@ -131,12 +142,21 @@ function showTable(state: GameState, title = "🎴 TABLE"): void {
   });
   const digitWidth = Math.max(1, ...playerResults.map((info) => info.digits.length));
 
+  // The dealer holds no chips of their own; their win/loss is simply the mirror image of what
+  // the seated players won or lost this round.
+  const dealerNet = -seatedPlayers.reduce((total, player) => {
+    const outcome = state.outcomes[player.id];
+    if (outcome === "win") return total + player.bet;
+    if (outcome === "lose") return total - player.bet;
+    return total;
+  }, 0);
+
   const dealerRow = [
     `${playerIcon("dealer")} Dealer`,
     ...tableCardCells(view.dealer.hand, cardColumns),
     `(${dealerScore})`,
     dealerBusted ? formatResult({ word: "Bust", emoji: "💀", sign: "", digits: "", color: null }, 0).result : "",
-    "",
+    isComplete ? formatSignedAmount(dealerNet) : "",
     "",
   ].map((cell) => paint(cell, ANSI.yellow));
 
@@ -171,7 +191,7 @@ function showTable(state: GameState, title = "🎴 TABLE"): void {
   output.write(`\n${lines.join("\n")}\n`);
 }
 
-function standingIcon(standing: Standing): string {
+function standingIcon(standing: Pick<Standing, "id">): string {
   return playerIcon(standing.id === "dealer" ? "dealer" : standing.id.startsWith("ai-") ? "ai" : "human");
 }
 
@@ -219,10 +239,35 @@ function showStandings(standings: readonly Standing[], round: number): void {
   output.write(`\n${standingsLines(standings, round).join("\n")}\n`);
 }
 
-function moneyRankingLines(standings: readonly Standing[]): string[] {
-  const ranked = rankByMoney(standings);
-  const rows = ranked.map((standing, index) => [`${index + 1}.`, `${standingIcon(standing)} ${standing.name}`]);
-  return buildBox("💰 MONEY RANKING", ["", "PLAYER"], ["right", "left"], rows);
+interface MoneyStanding {
+  id: string;
+  name: string;
+  /** Chips currently held. The dealer holds no chips, so theirs is a running total starting at $0. */
+  amount: number;
+}
+
+// Players' money is their actual chip count; the dealer isn't a chip holder, so their money
+// standing is instead the running total of what they've taken from (or paid to) the players,
+// starting from $0.
+function moneyStandings(standings: readonly Standing[], chips: Record<string, number>): MoneyStanding[] {
+  return standings.map((standing) => ({
+    id: standing.id,
+    name: standing.name,
+    amount: standing.id === "dealer" ? standing.netWinnings : (chips[standing.id] ?? 0),
+  }));
+}
+
+function moneyRankingLines(standings: readonly Standing[], chips: Record<string, number>): string[] {
+  const ranked = moneyStandings(standings, chips).sort((left, right) => right.amount - left.amount);
+  const rows = ranked.map((standing, index) => {
+    const amountText = formatMoney(standing.amount);
+    return [
+      `${index + 1}.`,
+      `${standingIcon(standing)} ${standing.name}`,
+      standing.amount < 0 ? paint(amountText, ANSI.red) : amountText,
+    ];
+  });
+  return buildBox("💰 MONEY RANKING", ["", "PLAYER", "MONEY"], ["right", "left", "right"], rows);
 }
 
 /** Prints two boxed tables side by side, padding the shorter one to match line counts. */
@@ -238,8 +283,8 @@ function showSideBySide(left: string[], right: string[]): void {
   output.write(`\n${lines.join("\n")}\n`);
 }
 
-function showFinalStandings(standings: readonly Standing[], round: number): void {
-  showSideBySide(standingsLines(standings, round), moneyRankingLines(standings));
+function showFinalStandings(standings: readonly Standing[], round: number, chips: Record<string, number>): void {
+  showSideBySide(standingsLines(standings, round), moneyRankingLines(standings, chips));
 }
 
 function showDraw(player: GameState["players"][number], label = "drew"): void {
@@ -446,7 +491,7 @@ async function main(): Promise<void> {
     }
     round += 1;
   }
-  showFinalStandings(standings, round - 1);
+  showFinalStandings(standings, round - 1, chips);
   output.write("\nThanks for playing!\n");
 }
 
