@@ -125,6 +125,6 @@ Settings are selected before starting a game and remain fixed during each round.
 ## AI Players
 
 - AI-controlled characters occupy additional seats and play against the dealer.
-- The initial implementation uses a simple hit-below-17 policy; a fuller basic-strategy policy can be added later.
+- AI players follow a simplified basic strategy based on their hand and the dealer's up card: they stand on 13–16 against a dealer 2–6 (12 against 4–6), stand on soft 18 against 2–8, and double down on 11, or on 10 against a dealer 2–9.
 - AI decisions use only information available to a player, without access to hidden cards or the remaining deck order.
 - AI decision logic is shared by the CLI and web versions and does not require an LLM service.
