@@ -49,7 +49,8 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 - Every human and AI player starts the session with $1,000 in chips.
 - Before each round, human players choose a bet up to their available chips, or press Enter to bet the standard $100.
 - AI players bet conservatively — the standard $100, or their whole stack if it's smaller — and never count cards.
-- A win pays 1:1 and a push returns the bet; a loss forfeits it.
+- A natural blackjack (21 on the first two cards) pays 3:2, rounded down to whole chips, and beats any other dealer 21; two naturals push.
+- Any other win pays 1:1 and a push returns the bet; a loss forfeits it.
 - Double Down automatically doubles the player's starting bet for that hand and is only offered when the player has enough chips to cover it.
 - A player with no chips left sits out the round.
 
@@ -99,7 +100,7 @@ The following features are intentionally deferred to future commits.
 
 - Enable or disable betting.
 - Configure starting chip balances and table betting limits.
-- Select a blackjack payout ratio, such as 3:2 or 6:5.
+- Select a blackjack payout ratio other than the default 3:2, such as 6:5.
 
 ### Table Setup
 

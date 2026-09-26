@@ -164,6 +164,39 @@ test("a winning bet doubles the player's stake and a push returns it", () => {
   assert.equal(state.players[1]?.chips, STARTING_CHIPS - 50 + 100);
 });
 
+test("a natural blackjack pays 3:2, rounded down to whole chips", () => {
+  const scriptedDeck = [
+    card("K"),  // dealer hit -> stands on 21 with three cards
+    card("6"),  // dealer second card
+    card("A"),  // player 2 second card
+    card("A"),  // player 1 second card
+    card("5"),  // dealer up card
+    card("Q"),  // player 2 first card
+    card("K"),  // player 1 first card
+  ];
+  const state = createGame(
+    { humanNames: ["Ada", "Grace"], aiCount: 0 },
+    { deck: scriptedDeck, bets: { "human-1": 100, "human-2": 25 } },
+  );
+  // Both naturals stand automatically, so the dealer plays straight away.
+  assert.equal(state.phase, "complete");
+  assert.deepEqual(state.outcomes, { "human-1": "win", "human-2": "win" });
+  assert.equal(state.players[0]?.chips, STARTING_CHIPS - 100 + 100 + 150);
+  assert.equal(state.players[1]?.chips, STARTING_CHIPS - 25 + 25 + 37);
+});
+
+test("a natural blackjack pushes against a dealer blackjack", () => {
+  const scriptedDeck = [
+    card("K"), // dealer second card
+    card("A"), // player second card
+    card("A"), // dealer up card
+    card("K"), // player first card
+  ];
+  const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck });
+  assert.deepEqual(state.outcomes, { "human-1": "push" });
+  assert.equal(state.players[0]?.chips, STARTING_CHIPS);
+});
+
 test("doubling down doubles the bet and is rejected without enough chips", () => {
   const scriptedDeck = [
     card("10"), // dealer hit -> busts
@@ -210,6 +243,8 @@ test("AI bets the standard amount, capped at its remaining chips", () => {
 test("standings record every player result, rank players, and keep the dealer first", () => {
   const state = createGame({ humanNames: ["Ada", "Grace"], aiCount: 1 }, { random: () => 0.5 });
   state.phase = "complete";
+  // Fixed non-blackjack hands keep every win at 1:1 regardless of the shuffle.
+  for (const player of state.players) player.hand = [card("10"), card("8")];
   const standings = createStandings(state);
 
   state.outcomes = { "human-1": "win", "human-2": "win", "ai-1": "win" };

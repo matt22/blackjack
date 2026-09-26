@@ -1,4 +1,4 @@
-import type { GameState, Outcome } from "./engine.js";
+import { winAmount, type GameState, type Outcome } from "./engine.js";
 
 export interface Standing {
   id: string;
@@ -24,13 +24,13 @@ export function createStandings(state: Pick<GameState, "players">): Standing[] {
   ];
 }
 
-function addOutcome(standing: Standing, outcome: Outcome, bet: number): void {
+function addOutcome(standing: Standing, outcome: Outcome, amount: number): void {
   if (outcome === "win") {
     standing.wins += 1;
-    standing.netWinnings += bet;
+    standing.netWinnings += amount;
   } else if (outcome === "lose") {
     standing.losses += 1;
-    standing.netWinnings -= bet;
+    standing.netWinnings -= amount;
   } else {
     standing.pushes += 1;
   }
@@ -67,8 +67,9 @@ export function recordRound(standings: Standing[], state: GameState): void {
     const outcome = state.outcomes[player.id];
     const standing = standings.find((entry) => entry.id === player.id);
     if (!outcome || !standing) throw new Error(`Missing standing or outcome for ${player.name}.`);
-    addOutcome(standing, outcome, player.bet);
-    addOutcome(dealer, outcome === "win" ? "lose" : outcome === "lose" ? "win" : "push", player.bet);
+    const amount = outcome === "win" ? winAmount(player) : player.bet;
+    addOutcome(standing, outcome, amount);
+    addOutcome(dealer, outcome === "win" ? "lose" : outcome === "lose" ? "win" : "push", amount);
   }
 
   rankStandings(standings);

@@ -129,6 +129,16 @@ export function scoreHand(hand: readonly Card[]): number {
   return score;
 }
 
+/** A natural: 21 on the initial two cards. A doubled-down hand has three cards, so it never qualifies. */
+export function isBlackjack(hand: readonly Card[]): boolean {
+  return hand.length === 2 && scoreHand(hand) === 21;
+}
+
+/** Profit on a winning hand: blackjack pays 3:2 (rounded down to whole chips), every other win pays 1:1. */
+export function winAmount(player: Pick<Player, "hand" | "bet">): number {
+  return isBlackjack(player.hand) ? Math.floor((player.bet * 3) / 2) : player.bet;
+}
+
 export function validateSetup(setup: GameSetup): void {
   if (!Number.isInteger(setup.aiCount) || setup.aiCount < 0 || setup.aiCount > MAX_AI_PLAYERS) {
     throw new Error(`AI player count must be between 0 and ${MAX_AI_PLAYERS}.`);
@@ -179,15 +189,17 @@ function updateStatus(player: Player): void {
 function settle(state: GameState): void {
   const dealerScore = scoreHand(state.dealer.hand);
   const dealerBust = dealerScore > 21;
+  const dealerBlackjack = isBlackjack(state.dealer.hand);
   state.outcomes = Object.fromEntries(
     state.players.map((player) => {
       const playerScore = scoreHand(player.hand);
       let outcome: Outcome;
       if (playerScore > 21) outcome = "lose";
       else if (dealerBust || playerScore > dealerScore) outcome = "win";
+      else if (isBlackjack(player.hand) && !dealerBlackjack) outcome = "win";
       else if (playerScore < dealerScore) outcome = "lose";
       else outcome = "push";
-      if (outcome === "win") player.chips += player.bet * 2;
+      if (outcome === "win") player.chips += player.bet + winAmount(player);
       else if (outcome === "push") player.chips += player.bet;
       return [player.id, outcome];
     }),

@@ -13,10 +13,12 @@ import {
   scoreHand,
   validateBet,
   validateName,
+  winAmount,
   type Action,
   type Card,
   type GameState,
   type Outcome,
+  type Player,
 } from "./engine.js";
 import { createStandings, recordRound, type Standing } from "./standings.js";
 
@@ -74,9 +76,9 @@ interface ResultInfo {
   color: string | null;
 }
 
-function outcomeInfo(outcome: Outcome, bet: number): ResultInfo {
-  if (outcome === "win") return { word: "Win", emoji: "🏆", sign: "+", digits: String(bet), color: ANSI.green };
-  if (outcome === "lose") return { word: "Loss", emoji: "☠️", sign: "-", digits: String(bet), color: ANSI.red };
+function outcomeInfo(outcome: Outcome, player: Pick<Player, "hand" | "bet">): ResultInfo {
+  if (outcome === "win") return { word: "Win", emoji: "🏆", sign: "+", digits: String(winAmount(player)), color: ANSI.green };
+  if (outcome === "lose") return { word: "Loss", emoji: "☠️", sign: "-", digits: String(player.bet), color: ANSI.red };
   return { word: "Push", emoji: "⚖️", sign: "", digits: "0", color: ANSI.yellow };
 }
 
@@ -137,7 +139,7 @@ function showTable(state: GameState, title = "🎴 TABLE"): void {
     if (player.status === "busted") {
       return { word: "Bust", emoji: "💀", sign: "-", digits: String(player.bet), color: null };
     }
-    if (isComplete && outcome) return outcomeInfo(outcome, player.bet);
+    if (isComplete && outcome) return outcomeInfo(outcome, player);
     return { word: "Bet", emoji: "", sign: "", digits: String(player.bet), color: null };
   });
   const digitWidth = Math.max(1, ...playerResults.map((info) => info.digits.length));
@@ -146,7 +148,7 @@ function showTable(state: GameState, title = "🎴 TABLE"): void {
   // the seated players won or lost this round.
   const dealerNet = -seatedPlayers.reduce((total, player) => {
     const outcome = state.outcomes[player.id];
-    if (outcome === "win") return total + player.bet;
+    if (outcome === "win") return total + winAmount(player);
     if (outcome === "lose") return total - player.bet;
     return total;
   }, 0);
