@@ -2,25 +2,25 @@
 
 A vanilla multiplayer blackjack game with a command-line interface and a reusable TypeScript game engine.
 
-This first release supports one or two human players, zero to three AI players, and up to five total players at one table. Every player starts with a $1,000 bankroll and places a bet each round. The CLI keeps win, loss, and push standings for the current session.
+This first release supports one or two human players, zero to three AI players, and up to five total players at one table. Every player starts with a $1,000 bankroll and places a bet each round. The CLI keeps win, loss, and push standings for the current session and ranks everyone by money when you leave the table.
 
 ## Play
 
-Requires Node.js 22 or newer.
+Requires Node.js 22 or newer and [pnpm](https://pnpm.io).
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 To compile and run the generated JavaScript:
 
 ```bash
-npm run build
-npm start
+pnpm build
+pnpm start
 ```
 
-Run the tests with `npm test`.
+Run the tests with `pnpm test`.
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 
@@ -28,8 +28,9 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 - Table updates use clearly labeled, vertically stacked rows with player and dealer icons.
 - Player and AI decisions are consolidated into one table update after the round resolves.
-- The final table includes the dealer's score, outcome markers, and a 💀 BUST marker in place of a loss marker for eliminated hands.
+- The final table includes the dealer's score, outcome markers with each player's winnings or losses, the dealer's net result for the round, and a 💀 BUST marker in place of a loss marker for eliminated hands.
 - After every round, a vertical standings table shows wins, losses, and pushes for every player and the dealer. Dealer totals are recorded once per player comparison.
+- When you leave the table, the final standings are shown beside a money ranking: players are ranked by the chips they hold, and the dealer by their running net total from $0.
 
 ![Blackjack CLI gameplay after several rounds](assets/blackjack-gameplay.png)
 
