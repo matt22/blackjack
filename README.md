@@ -41,7 +41,8 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 - Double Down draws exactly one card and then stands.
 - Aces count as 1 or 11, whichever produces the best hand.
 - A hand over 21 busts; a total of 21 stands automatically.
-- The dealer hits below 17 and stands on every 17 or higher.
+- The dealer hits below 17 and stands on every 17 or higher, including a soft 17.
+- The table rules (blackjack payout and dealer's 17 behavior) are posted before the first round.
 - Each player independently wins, loses, or pushes against the dealer.
 - Human names must contain 1–15 characters after surrounding whitespace is removed.
 

@@ -289,6 +289,19 @@ function showFinalStandings(standings: readonly Standing[], round: number, chips
   showSideBySide(standingsLines(standings, round), moneyRankingLines(standings, chips));
 }
 
+// Real tables post their payout and dealer rules on the felt before you sit down; this mirrors
+// that placard so players know the house edge up front.
+function showTableRules(): void {
+  const rules = ["Blackjack pays 3 to 2", "Dealer stands on all 17s (soft 17 included)"];
+  const innerWidth = Math.max(...rules.map(visibleLength));
+  const lines = [
+    divider("🪧 TABLE RULES", innerWidth),
+    ...rules.map((rule) => `│ ${rule}`),
+    `╰${"─".repeat(innerWidth + 1)}`,
+  ];
+  output.write(`\n${lines.join("\n")}\n`);
+}
+
 function showDraw(player: GameState["players"][number], label = "drew"): void {
   const card = player.hand.at(-1);
   if (!card) throw new Error(`${player.name} has no drawn card.`);
@@ -458,6 +471,7 @@ const rl = createInterface({ input, output });
 
 async function main(): Promise<void> {
   output.write("♠ Blackjack ♠\n\nHit, stand, or double down. Closest to 21 without going over wins.\n\n");
+  showTableRules();
   const humanCount = await askInteger("Number of human players (1-2): ", 1, 2);
   const humanNames: string[] = [];
   for (let index = 1; index <= humanCount; index += 1) humanNames.push(await askName(index));
