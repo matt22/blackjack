@@ -6,6 +6,7 @@ import {
   applyAction,
   createDeck,
   createGame,
+  getActivePlayer,
   getPublicState,
   scoreHand,
   validateBet,
@@ -38,7 +39,8 @@ test("enforces table and name limits", () => {
 });
 
 test("hides the dealer hole card during player turns", () => {
-  const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { random: () => 0.5 });
+  const scriptedDeck = [card("7"), card("6"), card("K"), card("10")];
+  const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck });
   const dealer = getPublicState(state).dealer;
   assert.ok(dealer.hand[0]);
   assert.equal(dealer.hand[1], null);
@@ -212,6 +214,41 @@ test("a natural blackjack pushes against a dealer blackjack", () => {
   const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck });
   assert.deepEqual(state.outcomes, { "human-1": "push" });
   assert.equal(state.players[0]?.chips, STARTING_CHIPS);
+});
+
+test("a dealer blackjack ends the round before anyone acts", () => {
+  const scriptedDeck = [
+    card("A"), // dealer hole card
+    card("A"), // player 2 second card
+    card("9"), // player 1 second card
+    card("K"), // dealer up card
+    card("Q"), // player 2 first card
+    card("10"), // player 1 first card
+  ];
+  const state = createGame(
+    { humanNames: ["Ada", "Grace"], aiCount: 0 },
+    { deck: scriptedDeck, bets: { "human-1": 100, "human-2": 50 } },
+  );
+  assert.equal(state.phase, "complete");
+  assert.equal(state.activePlayerIndex, null);
+  assert.throws(() => applyAction(state, "human-1", "Double Down"));
+  // Only the original bet is lost; the other natural pushes.
+  assert.deepEqual(state.outcomes, { "human-1": "lose", "human-2": "push" });
+  assert.equal(state.players[0]?.chips, STARTING_CHIPS - 100);
+  assert.equal(state.players[1]?.chips, STARTING_CHIPS);
+  assert.deepEqual(getPublicState(state).dealer.hand, [card("K"), card("A")]);
+});
+
+test("play continues when the dealer shows an ace without a blackjack", () => {
+  const scriptedDeck = [
+    card("9"), // dealer hole card
+    card("7"), // player second card
+    card("A"), // dealer up card
+    card("10"), // player first card
+  ];
+  const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck });
+  assert.equal(state.phase, "players");
+  assert.equal(getActivePlayer(state)?.id, "human-1");
 });
 
 test("doubling down doubles the bet and is rejected without enough chips", () => {

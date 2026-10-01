@@ -42,7 +42,8 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 - Aces count as 1 or 11, whichever produces the best hand.
 - A hand over 21 busts; a total of 21 stands automatically.
 - The dealer hits below 17 and stands on every 17 or higher, including a soft 17.
-- The table rules (blackjack payout and dealer's 17 behavior) are posted before the first round.
+- The table rules (blackjack payout, dealer's 17 behavior, and the blackjack check) are posted before the first round.
+- US hole-card rules: the dealer checks for blackjack before anyone acts. If the dealer has one, the round ends immediately and every player loses their original bet, except a player with their own natural, who pushes.
 - Each player independently wins, loses, or pushes against the dealer.
 - Human names must contain 1–15 characters after surrounding whitespace is removed.
 
@@ -116,7 +117,7 @@ The following features are intentionally deferred to future commits.
 - Allow or disallow doubling after splitting.
 - Configure splitting limits, resplitting aces, and hitting split aces.
 - Enable or disable surrender and insurance.
-- Configure dealer hole-card and blackjack-check rules.
+- Configure dealer hole-card and blackjack-check rules (e.g. European no-hole-card).
 
 ### Shared Configuration
 

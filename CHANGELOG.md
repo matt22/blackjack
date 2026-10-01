@@ -2,6 +2,16 @@
 
 All notable changes to Blackjack are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The dealer now checks for blackjack before players act (US hole-card rules). A dealer natural ends the round immediately: players lose only their original bet, and a player's own natural pushes. Previously players kept playing, and could double down, into a dealer blackjack.
+
+### Fixed
+
+- A player 21 made with three or more cards no longer pushes against a dealer blackjack.
+
 ## [0.1.2] — 2026-09-17
 
 ### Added

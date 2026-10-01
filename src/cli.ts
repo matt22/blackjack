@@ -10,6 +10,7 @@ import {
   createGame,
   getActivePlayer,
   getPublicState,
+  isBlackjack,
   scoreHand,
   validateBet,
   validateName,
@@ -292,7 +293,11 @@ function showFinalStandings(standings: readonly Standing[], round: number, chips
 // Real tables post their payout and dealer rules on the felt before you sit down; this mirrors
 // that placard so players know the house edge up front.
 function showTableRules(): void {
-  const rules = ["Blackjack pays 3 to 2", "Dealer stands on all 17s (soft 17 included)"];
+  const rules = [
+    "Blackjack pays 3 to 2",
+    "Dealer stands on all 17s (soft 17 included)",
+    "Dealer checks for blackjack before play",
+  ];
   const innerWidth = Math.max(...rules.map(visibleLength));
   const lines = [
     divider("🪧 TABLE RULES", innerWidth),
@@ -390,6 +395,7 @@ async function playRound(
   );
   if (state.reshuffleCount > 0) output.write("\n🔄 The deck has been reshuffled.\n");
   showTable(state, `🎴 ROUND ${round} · CARDS DEALT`);
+  if (isBlackjack(state.dealer.hand)) output.write("\n🎩 Dealer has blackjack. The round is over.\n");
 
   while (state.phase === "players") {
     const player = getActivePlayer(state);

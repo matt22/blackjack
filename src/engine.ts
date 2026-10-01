@@ -195,6 +195,7 @@ function settle(state: GameState): void {
       const playerScore = scoreHand(player.hand);
       let outcome: Outcome;
       if (playerScore > 21) outcome = "lose";
+      else if (dealerBlackjack) outcome = isBlackjack(player.hand) ? "push" : "lose";
       else if (dealerBust || playerScore > dealerScore) outcome = "win";
       else if (isBlackjack(player.hand) && !dealerBlackjack) outcome = "win";
       else if (playerScore < dealerScore) outcome = "lose";
@@ -269,6 +270,14 @@ export function createGame(
     state.dealer.hand.push(draw(state));
   }
   for (const player of state.players) updateStatus(player);
+  // US hole-card rule: the dealer peeks for a natural before anyone acts and, if it's there, the
+  // round ends at once. A natural always shows an Ace or ten-value up card, so checking the hand
+  // directly covers exactly the peek cases.
+  if (isBlackjack(state.dealer.hand)) {
+    state.dealer.status = "stood";
+    settle(state);
+    return state;
+  }
   if (state.players[0]?.status !== "playing") {
     state.activePlayerIndex = -1;
     advanceTurn(state);
