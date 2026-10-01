@@ -4,6 +4,10 @@ All notable changes to Blackjack are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Added
+
+- Insurance: when the dealer shows an Ace, human players can place a half-bet side wager that pays 2:1 if the dealer has blackjack, offered as even money to players holding a natural. Results appear on the round table and count toward money standings, not the win/loss record. AI players always decline.
+
 ### Changed
 
 - The dealer now checks for blackjack before players act (US hole-card rules). A dealer natural ends the round immediately: players lose only their original bet, and a player's own natural pushes. Previously players kept playing, and could double down, into a dealer blackjack.

@@ -8,6 +8,7 @@ import {
   createGame,
   getActivePlayer,
   getPublicState,
+  resolveInsurance,
   scoreHand,
   validateBet,
   validateSetup,
@@ -212,6 +213,7 @@ test("a natural blackjack pushes against a dealer blackjack", () => {
     card("K"), // player first card
   ];
   const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck });
+  resolveInsurance(state, []);
   assert.deepEqual(state.outcomes, { "human-1": "push" });
   assert.equal(state.players[0]?.chips, STARTING_CHIPS);
 });
@@ -247,8 +249,67 @@ test("play continues when the dealer shows an ace without a blackjack", () => {
     card("10"), // player first card
   ];
   const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck });
+  assert.equal(state.phase, "insurance");
+  assert.equal(getActivePlayer(state), null);
+  assert.equal(getPublicState(state).dealer.hand[1], null);
+  assert.throws(() => applyAction(state, "human-1", "Hit"));
+  resolveInsurance(state, []);
   assert.equal(state.phase, "players");
   assert.equal(getActivePlayer(state)?.id, "human-1");
+});
+
+test("insurance pays 2:1 when the dealer has blackjack", () => {
+  const scriptedDeck = [
+    card("K"), // dealer hole card
+    card("9"), // player second card
+    card("A"), // dealer up card
+    card("10"), // player first card
+  ];
+  const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck, bets: { "human-1": 100 } });
+  resolveInsurance(state, ["human-1"]);
+  assert.equal(state.phase, "complete");
+  assert.equal(state.outcomes["human-1"], "lose");
+  // Loses the $100 bet, wins $100 on the $50 insurance: breaks even.
+  assert.equal(state.players[0]?.chips, STARTING_CHIPS);
+  const standings = createStandings(state);
+  recordRound(standings, state);
+  assert.equal(standings.find((entry) => entry.id === "human-1")?.netWinnings, 0);
+  assert.equal(standings.find((entry) => entry.id === "dealer")?.netWinnings, 0);
+});
+
+test("insurance is lost when the dealer has no blackjack", () => {
+  const scriptedDeck = [
+    card("6"), // dealer hole card -> stands on soft 17
+    card("9"), // player second card
+    card("A"), // dealer up card
+    card("10"), // player first card
+  ];
+  const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck, bets: { "human-1": 100 } });
+  resolveInsurance(state, ["human-1"]);
+  assert.equal(state.players[0]?.chips, STARTING_CHIPS - 150);
+  applyAction(state, "human-1", "Stand");
+  assert.equal(state.outcomes["human-1"], "win");
+  assert.equal(state.players[0]?.chips, STARTING_CHIPS + 100 - 50);
+});
+
+test("even money on a natural nets the bet whether or not the dealer has blackjack", () => {
+  for (const hole of ["K", "6"] as const) {
+    const scriptedDeck = [card(hole), card("K"), card("A"), card("A")];
+    const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck, bets: { "human-1": 100 } });
+    resolveInsurance(state, ["human-1"]);
+    assert.equal(state.phase, "complete");
+    assert.equal(state.players[0]?.chips, STARTING_CHIPS + 100);
+  }
+});
+
+test("insurance is rejected without enough chips", () => {
+  const scriptedDeck = [card("6"), card("9"), card("A"), card("10")];
+  const state = createGame(
+    { humanNames: ["Ada"], aiCount: 0 },
+    { deck: scriptedDeck, chips: { "human-1": 100 }, bets: { "human-1": 100 } },
+  );
+  assert.throws(() => resolveInsurance(state, ["human-1"]), /cannot afford insurance/);
+  assert.equal(state.phase, "insurance");
 });
 
 test("doubling down doubles the bet and is rejected without enough chips", () => {

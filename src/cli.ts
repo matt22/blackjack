@@ -7,10 +7,14 @@ import {
   STANDARD_BET,
   STARTING_CHIPS,
   applyAction,
+  canTakeInsurance,
   createGame,
   getActivePlayer,
   getPublicState,
+  insuranceCost,
+  insuranceNet,
   isBlackjack,
+  resolveInsurance,
   scoreHand,
   validateBet,
   validateName,
@@ -152,7 +156,7 @@ function showTable(state: GameState, title = "🎴 TABLE"): void {
     if (outcome === "win") return total + winAmount(player);
     if (outcome === "lose") return total - player.bet;
     return total;
-  }, 0);
+  }, 0) - (isComplete ? seatedPlayers.reduce((total, player) => total + insuranceNet(player, state.dealer.hand), 0) : 0);
 
   const dealerRow = [
     `${playerIcon("dealer")} Dealer`,
@@ -187,6 +191,13 @@ function showTable(state: GameState, title = "🎴 TABLE"): void {
     ["left", ...cardAligns, "right", "left", "right", "left"],
     [dealerRow, ...playerRows],
   );
+  const insured = seatedPlayers.filter((player) => player.insuranceBet > 0);
+  if (isComplete && insured.length > 0) {
+    const results = insured
+      .map((player) => `${player.name} ${formatSignedAmount(insuranceNet(player, state.dealer.hand))}`)
+      .join(" · ");
+    lines.splice(lines.length - 1, 0, `│ 🛡️ Insurance: ${results}`);
+  }
   if (sittingOut.length > 0) {
     const names = sittingOut.map((player) => player.name).join(", ");
     lines.splice(lines.length - 1, 0, `│ ${paint(`🚪 Sitting out: ${names}`, ANSI.gray)}`);
@@ -297,6 +308,7 @@ function showTableRules(): void {
     "Blackjack pays 3 to 2",
     "Dealer stands on all 17s (soft 17 included)",
     "Dealer checks for blackjack before play",
+    "Insurance pays 2 to 1",
   ];
   const innerWidth = Math.max(...rules.map(visibleLength));
   const lines = [
@@ -305,6 +317,27 @@ function showTableRules(): void {
     `╰${"─".repeat(innerWidth + 1)}`,
   ];
   output.write(`\n${lines.join("\n")}\n`);
+}
+
+// AI players follow basic strategy, which never takes insurance, so only humans are asked.
+async function offerInsurance(state: GameState): Promise<void> {
+  const eligible = state.players.filter((player) => player.kind === "human" && player.bet > 0 && canTakeInsurance(player));
+  const insured: string[] = [];
+  if (eligible.length > 0) {
+    output.write("\n🛡️ Dealer shows an Ace. Insurance costs half your bet and pays 2:1 if the dealer has blackjack.\n");
+  }
+  for (const player of eligible) {
+    const cost = insuranceCost(player);
+    const question = isBlackjack(player.hand)
+      ? `${player.name}, you have blackjack. Take even money (a sure 1:1 win)? [y/N] `
+      : `${player.name}, insure for $${cost}? [y/N] `;
+    const answer = (await rl.question(question)).trim().toLowerCase();
+    if (answer === "y" || answer === "yes") insured.push(player.id);
+  }
+  resolveInsurance(state, insured);
+  if (!isBlackjack(state.dealer.hand)) {
+    output.write(`\n🎩 Dealer doesn't have blackjack.${insured.length > 0 ? " Insurance loses." : ""}\n`);
+  }
 }
 
 function showDraw(player: GameState["players"][number], label = "drew"): void {
@@ -395,6 +428,7 @@ async function playRound(
   );
   if (state.reshuffleCount > 0) output.write("\n🔄 The deck has been reshuffled.\n");
   showTable(state, `🎴 ROUND ${round} · CARDS DEALT`);
+  if (state.phase === "insurance") await offerInsurance(state);
   if (isBlackjack(state.dealer.hand)) output.write("\n🎩 Dealer has blackjack. The round is over.\n");
 
   while (state.phase === "players") {

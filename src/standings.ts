@@ -1,4 +1,4 @@
-import { winAmount, type GameState, type Outcome } from "./engine.js";
+import { insuranceNet, winAmount, type GameState, type Outcome } from "./engine.js";
 
 export interface Standing {
   id: string;
@@ -70,6 +70,10 @@ export function recordRound(standings: Standing[], state: GameState): void {
     const amount = outcome === "win" ? winAmount(player) : player.bet;
     addOutcome(standing, outcome, amount);
     addOutcome(dealer, outcome === "win" ? "lose" : outcome === "lose" ? "win" : "push", amount);
+    // Insurance is a side bet: it moves money but doesn't count toward the win/loss/push record.
+    const insurance = insuranceNet(player, state.dealer.hand);
+    standing.netWinnings += insurance;
+    dealer.netWinnings -= insurance;
   }
 
   rankStandings(standings);

@@ -54,6 +54,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 - AI players bet conservatively — the standard $100, or their whole stack if it's smaller — and never count cards.
 - A natural blackjack (21 on the first two cards) pays 3:2, rounded down to whole chips, and beats any other dealer 21; two naturals push.
 - Any other win pays 1:1 and a push returns the bet; a loss forfeits it.
+- When the dealer shows an Ace, human players are offered insurance before the dealer checks for blackjack: a side bet of half their wager (rounded down) that pays 2:1 if the dealer has blackjack. A player holding a natural is offered it as even money, a guaranteed 1:1 win. AI players never take insurance.
 - Double Down automatically doubles the player's starting bet for that hand and is only offered when the player has enough chips to cover it.
 - A player with no chips left sits out the round.
 

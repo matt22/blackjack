@@ -16,7 +16,7 @@ export type Suit = (typeof SUITS)[number];
 export type Rank = (typeof RANKS)[number];
 export type PlayerKind = "human" | "ai";
 export type PlayerStatus = "playing" | "stood" | "busted";
-export type RoundPhase = "players" | "dealer" | "complete";
+export type RoundPhase = "insurance" | "players" | "dealer" | "complete";
 export type Outcome = "win" | "lose" | "push";
 export type Action = "Hit" | "Stand" | "Double Down";
 
@@ -34,6 +34,8 @@ export interface Player {
   doubledDown: boolean;
   chips: number;
   bet: number;
+  /** Insurance side bet placed this round; 0 when declined or not offered. */
+  insuranceBet: number;
 }
 
 export interface Dealer {
@@ -134,6 +136,21 @@ export function isBlackjack(hand: readonly Card[]): boolean {
   return hand.length === 2 && scoreHand(hand) === 21;
 }
 
+/** Insurance costs half the bet (rounded down to whole chips) and pays 2:1 if the dealer has blackjack. */
+export function insuranceCost(player: Pick<Player, "bet">): number {
+  return Math.floor(player.bet / 2);
+}
+
+export function canTakeInsurance(player: Pick<Player, "bet" | "chips">): boolean {
+  const cost = insuranceCost(player);
+  return cost > 0 && player.chips >= cost;
+}
+
+/** Net chips from the insurance side bet once the dealer's hand is known. */
+export function insuranceNet(player: Pick<Player, "insuranceBet">, dealerHand: readonly Card[]): number {
+  return isBlackjack(dealerHand) ? player.insuranceBet * 2 : -player.insuranceBet;
+}
+
 /** Profit on a winning hand: blackjack pays 3:2 (rounded down to whole chips), every other win pays 1:1. */
 export function winAmount(player: Pick<Player, "hand" | "bet">): number {
   return isBlackjack(player.hand) ? Math.floor((player.bet * 3) / 2) : player.bet;
@@ -202,6 +219,7 @@ function settle(state: GameState): void {
       else outcome = "push";
       if (outcome === "win") player.chips += player.bet + winAmount(player);
       else if (outcome === "push") player.chips += player.bet;
+      if (dealerBlackjack) player.chips += player.insuranceBet * 3;
       return [player.id, outcome];
     }),
   );
@@ -246,6 +264,7 @@ export function createGame(
       doubledDown: false,
       chips: startingChips - bet,
       bet,
+      insuranceBet: 0,
     };
   };
   const players: Player[] = [
@@ -270,19 +289,45 @@ export function createGame(
     state.dealer.hand.push(draw(state));
   }
   for (const player of state.players) updateStatus(player);
+  // An Ace up card pauses the round so players can take insurance before the dealer peeks.
+  if (state.dealer.hand[0]?.rank === "A") {
+    state.phase = "insurance";
+    state.activePlayerIndex = null;
+    return state;
+  }
+  peekAndStartTurns(state);
+  return state;
+}
+
+/** Places insurance for the listed players, then lets the dealer peek and play continue. */
+export function resolveInsurance(state: GameState, insuredPlayerIds: readonly string[]): GameState {
+  if (state.phase !== "insurance") throw new Error("Insurance is not being offered.");
+  const insured = insuredPlayerIds.map((id) => {
+    const player = state.players.find((candidate) => candidate.id === id);
+    if (!player) throw new Error(`Unknown player: ${id}.`);
+    if (!canTakeInsurance(player)) throw new Error(`${player.name} cannot afford insurance.`);
+    return player;
+  });
+  for (const player of insured) {
+    player.insuranceBet = insuranceCost(player);
+    player.chips -= player.insuranceBet;
+  }
+  state.phase = "players";
+  peekAndStartTurns(state);
+  return state;
+}
+
+function peekAndStartTurns(state: GameState): void {
   // US hole-card rule: the dealer peeks for a natural before anyone acts and, if it's there, the
   // round ends at once. A natural always shows an Ace or ten-value up card, so checking the hand
   // directly covers exactly the peek cases.
   if (isBlackjack(state.dealer.hand)) {
     state.dealer.status = "stood";
     settle(state);
-    return state;
+    return;
   }
-  if (state.players[0]?.status !== "playing") {
-    state.activePlayerIndex = -1;
-    advanceTurn(state);
-  }
-  return state;
+  state.activePlayerIndex = -1;
+  advanceTurn(state);
 }
 
 export function applyAction(state: GameState, playerId: string, action: Action): GameState {
@@ -322,7 +367,7 @@ export function getActivePlayer(state: GameState): Player | null {
 }
 
 export function getPublicState(state: GameState): PublicGameState {
-  const revealDealer = state.phase !== "players";
+  const revealDealer = state.phase === "dealer" || state.phase === "complete";
   return {
     players: state.players.map((player) => ({ ...player, hand: [...player.hand], score: scoreHand(player.hand) })),
     dealer: {
