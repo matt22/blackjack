@@ -124,8 +124,13 @@ function divider(title: string, innerWidth: number): string {
 // The trailing U+FE0F forces wide emoji-style rendering, so every icon occupies a consistent
 // column width across terminals — without it, some fonts render 🎩 narrower than 🤖 or 👤,
 // throwing off the padding-based alignment of the columns that follow.
-function playerIcon(kind: "dealer" | "human" | "ai"): string {
-  const icon = kind === "dealer" ? "🎩" : kind === "ai" ? "🤖" : "👤";
+// Each AI seat gets its own icon so up to three AI players stay distinguishable at a glance.
+const AI_ICONS = ["🤖", "😈", "👽"];
+
+/** Icon for a seat by id: "dealer", "human-N", or "ai-N". */
+function playerIcon(id: string): string {
+  const aiSeat = id.startsWith("ai-") ? Number(id.slice(3)) : null;
+  const icon = id === "dealer" ? "🎩" : aiSeat !== null ? (AI_ICONS[aiSeat - 1] ?? "🤖") : "👤";
   return `${icon}️`;
 }
 
@@ -173,7 +178,7 @@ function showTable(state: GameState, title = "🎴 TABLE"): void {
     const busted = player.status === "busted";
     const { result, amount } = formatResult(info, digitWidth);
     const cells = [
-      `${playerIcon(player.kind === "ai" ? "ai" : "human")} ${player.name}`,
+      `${playerIcon(player.id)} ${player.name}`,
       ...tableCardCells(player.hand, cardColumns),
       `(${player.score})`,
       info.color ? paint(result, info.color) : result,
@@ -206,7 +211,7 @@ function showTable(state: GameState, title = "🎴 TABLE"): void {
 }
 
 function standingIcon(standing: Pick<Standing, "id">): string {
-  return playerIcon(standing.id === "dealer" ? "dealer" : standing.id.startsWith("ai-") ? "ai" : "human");
+  return playerIcon(standing.id);
 }
 
 type Align = "left" | "right";
