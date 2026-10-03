@@ -117,7 +117,7 @@ The following features are intentionally deferred to future commits.
 - Configure whether doubling is allowed on any initial two cards or only specified totals.
 - Allow or disallow doubling after splitting.
 - Configure splitting limits, resplitting aces, and hitting split aces.
-- Enable or disable surrender and insurance.
+- Enable or disable surrender, and allow insurance to be turned off (it is currently always offered when the dealer shows an Ace).
 - Configure dealer hole-card and blackjack-check rules (e.g. European no-hole-card).
 
 ### Shared Configuration
@@ -128,7 +128,7 @@ Settings are selected before starting a game and remain fixed during each round.
 
 ## AI Players
 
-- AI-controlled characters occupy additional seats and play against the dealer.
+- AI-controlled characters occupy additional seats and play against the dealer. Each one has its own emoji (🤖 😈 👽) so seats are easy to tell apart.
 - AI players follow a simplified basic strategy based on their hand and the dealer's up card: they stand on 13–16 against a dealer 2–6 (12 against 4–6), stand on soft 18 against 2–8, and double down on 11, or on 10 against a dealer 2–9.
 - AI decisions use only information available to a player, without access to hidden cards or the remaining deck order.
 - AI decision logic is shared by the CLI and web versions and does not require an LLM service.
