@@ -127,6 +127,32 @@ function divider(title: string, innerWidth: number): string {
 // Each AI seat gets its own icon so up to three AI players stay distinguishable at a glance.
 const AI_ICONS = ["🤖", "😈", "👽"];
 
+// Icons a human player can pick by number (1–20); not yet offered in the CLI. Each is a single
+// emoji code point (no ZWJ sequences or skin tones) so it stays two columns wide, and none
+// repeat the dealer, AI, or default human icons.
+const HUMAN_ICON_CHOICES: Readonly<Record<number, string>> = {
+  1: "😎",
+  2: "🤠",
+  3: "🤓",
+  4: "🥳",
+  5: "😺",
+  6: "🐶",
+  7: "🦊",
+  8: "🐼",
+  9: "🐸",
+  10: "🐵",
+  11: "🦁",
+  12: "🐯",
+  13: "🐧",
+  14: "🦉",
+  15: "🦄",
+  16: "🐙",
+  17: "🦈",
+  18: "🦖",
+  19: "👻",
+  20: "💀",
+};
+
 /** Icon for a seat by id: "dealer", "human-N", or "ai-N". */
 function playerIcon(id: string): string {
   const aiSeat = id.startsWith("ai-") ? Number(id.slice(3)) : null;
