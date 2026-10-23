@@ -365,10 +365,11 @@ function showTableRules(): void {
     "Dealer checks for blackjack before play",
     "Insurance pays 2 to 1",
   ];
-  const innerWidth = Math.max(...rules.map(visibleLength));
+  const contentWidth = Math.max(...rules.map(visibleLength));
+  const innerWidth = contentWidth + 1;
   const lines = [
     divider("🪧 TABLE RULES", innerWidth),
-    ...rules.map((rule) => `│ ${rule}`),
+    ...rules.map((rule) => `│ ${rule}${" ".repeat(contentWidth - visibleLength(rule))}│`),
     `╰${"─".repeat(innerWidth + 1)}`,
   ];
   output.write(`\n${lines.join("\n")}\n`);
