@@ -117,9 +117,9 @@ function visibleLength(text: string): number {
 
 const BANNER_INNER_WIDTH = 42;
 
-/** Counts each clover as two terminal columns when centering the opening banner. */
+/** Measures banner text using the same character width as the CLI's fixed-width borders. */
 function bannerVisibleLength(text: string): number {
-  return visibleLength(text) + [...text].filter((character) => character === "🍀").length;
+  return visibleLength(text);
 }
 
 function bannerLine(text: string): string {
