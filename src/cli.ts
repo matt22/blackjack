@@ -367,10 +367,15 @@ function showTableRules(): void {
   ];
   const contentWidth = Math.max(...rules.map(visibleLength));
   const innerWidth = contentWidth + 1;
+  const title = "🪧 TABLE RULES";
+  const topDashCount = Math.max(1, innerWidth - visibleLength(title) - 3);
+  const border = (text: string) => paint(text, ANSI.cyan);
   const lines = [
-    divider("🪧 TABLE RULES", innerWidth),
-    ...rules.map((rule) => `│ ${rule}${" ".repeat(contentWidth - visibleLength(rule))}│`),
-    `╰${"─".repeat(innerWidth + 1)}`,
+    border(`╭─ ${title} ${"─".repeat(topDashCount)}╮`),
+    ...rules.map(
+      (rule) => `${border("│")} ${rule}${" ".repeat(contentWidth - visibleLength(rule))}${border("│")}`,
+    ),
+    border(`╰${"─".repeat(innerWidth)}╯`),
   ];
   output.write(`\n${lines.join("\n")}\n`);
 }
