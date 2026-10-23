@@ -115,6 +115,30 @@ function visibleLength(text: string): number {
   return text.replace(ANSI_PATTERN, "").replace(VS16_PATTERN, "").length;
 }
 
+const BANNER_INNER_WIDTH = 42;
+
+/** Counts each clover as two terminal columns when centering the opening banner. */
+function bannerVisibleLength(text: string): number {
+  return visibleLength(text) + [...text].filter((character) => character === "🍀").length;
+}
+
+function bannerLine(text: string): string {
+  const width = bannerVisibleLength(text);
+  const leftPadding = Math.max(0, Math.floor((BANNER_INNER_WIDTH - width) / 2));
+  const rightPadding = Math.max(0, BANNER_INNER_WIDTH - width - leftPadding);
+  return `│${" ".repeat(leftPadding)}${text}${" ".repeat(rightPadding)}│`;
+}
+
+function showOpeningBanner(): void {
+  const lines = [
+    `╭${"─".repeat(BANNER_INNER_WIDTH)}╮`,
+    bannerLine("🍀🍀🍀 BLACKJACK 🍀🍀🍀"),
+    bannerLine("Chasing Fortune & Glory ... and 21!"),
+    `╰${"─".repeat(BANNER_INNER_WIDTH)}╯`,
+  ];
+  output.write(`\n${lines.join("\n")}\n`);
+}
+
 /** Top border of a box, sized so its total width matches `innerWidth` (the content width after "│ "). */
 function divider(title: string, innerWidth: number): string {
   const dashCount = Math.max(1, innerWidth - visibleLength(title) - 2);
@@ -541,7 +565,8 @@ async function playRound(
 const rl = createInterface({ input, output });
 
 async function main(): Promise<void> {
-  output.write("♠ Blackjack ♠\n\nHit, stand, or double down. Closest to 21 without going over wins.\n\n");
+  showOpeningBanner();
+  output.write("\nHit, stand, or double down. Closest to 21 without going over wins.\n\n");
   showTableRules();
   const humanCount = await askInteger("Number of human players (1-2): ", 1, 2);
   const humanNames: string[] = [];
