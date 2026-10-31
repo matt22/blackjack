@@ -123,26 +123,26 @@ test("double down is rejected after a player has hit", () => {
   assert.equal(state.deck.length, 1);
 });
 
-test("AI players double down on an initial total of 11", () => {
-  assert.equal(chooseAiAction([card("5"), card("6")], card("10")), "Double Down");
-  assert.equal(chooseAiAction([card("5"), card("6"), card("A")], card("10")), "Hit");
-});
+test("AI players choose actions across hard, soft, and double-down hands", () => {
+  const cases = [
+    { hand: [card("5"), card("6")], dealer: card("10"), action: "Double Down" },
+    { hand: [card("5"), card("6"), card("A")], dealer: card("10"), action: "Hit" },
+    { hand: [card("10"), card("6")], dealer: card("5"), action: "Stand" },
+    { hand: [card("10"), card("6")], dealer: card("7"), action: "Hit" },
+    { hand: [card("10"), card("2")], dealer: card("4"), action: "Stand" },
+    { hand: [card("10"), card("2")], dealer: card("3"), action: "Hit" },
+    { hand: [card("10"), card("7")], dealer: card("A"), action: "Stand" },
+    { hand: [card("A"), card("6")], dealer: card("5"), action: "Hit" },
+    { hand: [card("A"), card("7")], dealer: card("8"), action: "Stand" },
+    { hand: [card("A"), card("7")], dealer: card("9"), action: "Hit" },
+    { hand: [card("A"), card("8")], dealer: card("K"), action: "Stand" },
+    { hand: [card("6"), card("4")], dealer: card("9"), action: "Double Down" },
+    { hand: [card("6"), card("4")], dealer: card("10"), action: "Hit" },
+  ] as const;
 
-test("AI players stand on stiff hands against a weak dealer up card", () => {
-  assert.equal(chooseAiAction([card("10"), card("6")], card("5")), "Stand");
-  assert.equal(chooseAiAction([card("10"), card("6")], card("7")), "Hit");
-  assert.equal(chooseAiAction([card("10"), card("2")], card("4")), "Stand");
-  assert.equal(chooseAiAction([card("10"), card("2")], card("3")), "Hit");
-  assert.equal(chooseAiAction([card("10"), card("7")], card("A")), "Stand");
-});
-
-test("AI players play soft hands and double down on 10 by the dealer up card", () => {
-  assert.equal(chooseAiAction([card("A"), card("6")], card("5")), "Hit");
-  assert.equal(chooseAiAction([card("A"), card("7")], card("8")), "Stand");
-  assert.equal(chooseAiAction([card("A"), card("7")], card("9")), "Hit");
-  assert.equal(chooseAiAction([card("A"), card("8")], card("K")), "Stand");
-  assert.equal(chooseAiAction([card("6"), card("4")], card("9")), "Double Down");
-  assert.equal(chooseAiAction([card("6"), card("4")], card("10")), "Hit");
+  for (const { hand, dealer, action } of cases) {
+    assert.equal(chooseAiAction(hand, dealer), action);
+  }
 });
 
 test("players start with the default chip stack and standard bet", () => {
