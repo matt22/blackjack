@@ -9,57 +9,10 @@ export { createDeck, createDecks, deckCountForPlayers, shuffle } from "./cards/d
 export { isBlackjack, scoreHand } from "./cards/hand.js";
 import { createDecks, deckCountForPlayers, shuffle } from "./cards/deck.js";
 import { isBlackjack, scoreHand } from "./cards/hand.js";
-
-/** Insurance costs half the bet (rounded down to whole chips) and pays 2:1 if the dealer has blackjack. */
-export function insuranceCost(player: Pick<Player, "bet">): number {
-  return Math.floor(player.bet / 2);
-}
-
-export function canTakeInsurance(player: Pick<Player, "bet" | "chips">): boolean {
-  const cost = insuranceCost(player);
-  return cost > 0 && player.chips >= cost;
-}
-
-/** Net chips from the insurance side bet once the dealer's hand is known. */
-export function insuranceNet(player: Pick<Player, "insuranceBet">, dealerHand: readonly Card[]): number {
-  return isBlackjack(dealerHand) ? player.insuranceBet * 2 : -player.insuranceBet;
-}
-
-/** Profit on a winning hand: blackjack pays 3:2 (rounded down to whole chips), every other win pays 1:1. */
-export function winAmount(player: Pick<Player, "hand" | "bet">): number {
-  return isBlackjack(player.hand) ? Math.floor((player.bet * 3) / 2) : player.bet;
-}
-
-export function validateSetup(setup: GameSetup): void {
-  if (!Number.isInteger(setup.aiCount) || setup.aiCount < 0 || setup.aiCount > MAX_AI_PLAYERS) {
-    throw new Error(`AI player count must be between 0 and ${MAX_AI_PLAYERS}.`);
-  }
-  if (setup.humanNames.length < 1 || setup.humanNames.length > MAX_HUMAN_PLAYERS) {
-    throw new Error(`Human player count must be between 1 and ${MAX_HUMAN_PLAYERS}.`);
-  }
-  if (setup.humanNames.length + setup.aiCount > MAX_PLAYERS) {
-    throw new Error(`A game can have at most ${MAX_PLAYERS} players.`);
-  }
-  for (const name of setup.humanNames) validateName(name);
-}
-
-/** A bet of 0 is only valid when the player has no chips left to wager, i.e. they sit out the round. */
-export function validateBet(bet: number, availableChips: number): void {
-  if (!Number.isInteger(bet)) throw new Error("Bet must be a whole number.");
-  if (availableChips === 0) {
-    if (bet !== 0) throw new Error("No chips available to bet.");
-    return;
-  }
-  if (bet <= 0) throw new Error("Bet must be greater than zero.");
-  if (bet > availableChips) throw new Error("Bet cannot exceed available chips.");
-}
-
-export function validateName(name: string): void {
-  if (name.trim().length === 0) throw new Error("Player name cannot be empty.");
-  if ([...name.trim()].length > MAX_NAME_LENGTH) {
-    throw new Error(`Player name cannot exceed ${MAX_NAME_LENGTH} characters.`);
-  }
-}
+export { canTakeInsurance, insuranceCost, insuranceNet, winAmount } from "./betting/payouts.js";
+export { validateBet, validateName, validateSetup } from "./betting/validation.js";
+import { canTakeInsurance, insuranceCost, insuranceNet, winAmount } from "./betting/payouts.js";
+import { validateBet, validateName, validateSetup } from "./betting/validation.js";
 
 function draw(state: GameState): Card {
   if (state.deck.length === 0 || (state.enableEmergencyReshuffle && state.deck.length <= MID_ROUND_RESHUFFLE_THRESHOLD)) {
