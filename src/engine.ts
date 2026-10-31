@@ -13,6 +13,8 @@ export { canTakeInsurance, insuranceCost, insuranceNet, winAmount } from "./bett
 export { validateBet, validateName, validateSetup } from "./betting/validation.js";
 import { canTakeInsurance, insuranceCost, insuranceNet, winAmount } from "./betting/payouts.js";
 import { validateBet, validateName, validateSetup } from "./betting/validation.js";
+import { createPlayers } from "./game/players.js";
+import { updateStatus } from "./game/status.js";
 
 function draw(state: GameState): Card {
   if (state.deck.length === 0 || (state.enableEmergencyReshuffle && state.deck.length <= MID_ROUND_RESHUFFLE_THRESHOLD)) {
@@ -22,12 +24,6 @@ function draw(state: GameState): Card {
   const card = state.deck.pop();
   if (!card) throw new Error("The deck is empty.");
   return card;
-}
-
-function updateStatus(player: Player): void {
-  const score = scoreHand(player.hand);
-  if (score > 21) player.status = "busted";
-  else if (score === 21) player.status = "stood";
 }
 
 function settle(state: GameState): void {
@@ -78,26 +74,7 @@ export function createGame(
   options: GameOptions = {},
 ): GameState {
   validateSetup(setup);
-  const playerFromId = (id: string, name: string, kind: PlayerKind): Player => {
-    const startingChips = options.chips?.[id] ?? STARTING_CHIPS;
-    const bet = options.bets?.[id] ?? Math.min(STANDARD_BET, startingChips);
-    validateBet(bet, startingChips);
-    return {
-      id,
-      name,
-      kind,
-      hand: [],
-      status: "playing",
-      doubledDown: false,
-      chips: startingChips - bet,
-      bet,
-      insuranceBet: 0,
-    };
-  };
-  const players: Player[] = [
-    ...setup.humanNames.map((name, index) => playerFromId(`human-${index + 1}`, name.trim(), "human")),
-    ...Array.from({ length: setup.aiCount }, (_, index) => playerFromId(`ai-${index + 1}`, `AI ${index + 1}`, "ai")),
-  ];
+  const players = createPlayers(setup, options);
 
   const state: GameState = {
     players,
