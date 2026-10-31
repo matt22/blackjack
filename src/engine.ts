@@ -5,58 +5,10 @@ import {
   MID_ROUND_RESHUFFLE_THRESHOLD, RANKS, STARTING_CHIPS, STANDARD_BET, SUITS,
 } from "./domain/constants.js";
 import type { Action, Card, GameOptions, GameSetup, GameState, Player, PlayerKind } from "./domain/types.js";
-
-export function createDeck(): Card[] {
-  return SUITS.flatMap((suit) => RANKS.map((rank) => ({ rank, suit })));
-}
-
-export function deckCountForPlayers(nonDealerPlayers: number): number {
-  return Math.max(1, Math.ceil(nonDealerPlayers / 2) + 1);
-}
-
-function createDecks(nonDealerPlayers: number): Card[] {
-  return Array.from({ length: deckCountForPlayers(nonDealerPlayers) }, () => createDeck()).flat();
-}
-
-export function shuffle<T>(items: readonly T[], random: () => number = Math.random): T[] {
-  const result = [...items];
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    const current = result[index];
-    const swap = result[swapIndex];
-    if (current === undefined || swap === undefined) throw new Error("Invalid shuffle index");
-    result[index] = swap;
-    result[swapIndex] = current;
-  }
-  return result;
-}
-
-export function scoreHand(hand: readonly Card[]): number {
-  let score = 0;
-  let aces = 0;
-
-  for (const card of hand) {
-    if (card.rank === "A") {
-      score += 11;
-      aces += 1;
-    } else if (["J", "Q", "K"].includes(card.rank)) {
-      score += 10;
-    } else {
-      score += Number(card.rank);
-    }
-  }
-
-  while (score > 21 && aces > 0) {
-    score -= 10;
-    aces -= 1;
-  }
-  return score;
-}
-
-/** A natural: 21 on the initial two cards. A doubled-down hand has three cards, so it never qualifies. */
-export function isBlackjack(hand: readonly Card[]): boolean {
-  return hand.length === 2 && scoreHand(hand) === 21;
-}
+export { createDeck, createDecks, deckCountForPlayers, shuffle } from "./cards/deck.js";
+export { isBlackjack, scoreHand } from "./cards/hand.js";
+import { createDecks, deckCountForPlayers, shuffle } from "./cards/deck.js";
+import { isBlackjack, scoreHand } from "./cards/hand.js";
 
 /** Insurance costs half the bet (rounded down to whole chips) and pays 2:1 if the dealer has blackjack. */
 export function insuranceCost(player: Pick<Player, "bet">): number {
