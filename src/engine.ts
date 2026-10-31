@@ -1,88 +1,10 @@
-export const MAX_HUMAN_PLAYERS = 2;
-export const MAX_AI_PLAYERS = 3;
-export const MAX_PLAYERS = 5;
-export const MAX_NAME_LENGTH = 15;
-export const CARDS_PER_DECK = 52;
-export const MID_ROUND_RESHUFFLE_THRESHOLD = 20;
-export const STARTING_CHIPS = 1000;
-export const STANDARD_BET = 100;
-
-export const SUITS = ["Clubs", "Diamonds", "Hearts", "Spades"] as const;
-export const RANKS = [
-  "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A",
-] as const;
-
-export type Suit = (typeof SUITS)[number];
-export type Rank = (typeof RANKS)[number];
-export type PlayerKind = "human" | "ai";
-export type PlayerStatus = "playing" | "stood" | "busted";
-export type RoundPhase = "insurance" | "players" | "dealer" | "complete";
-export type Outcome = "win" | "lose" | "push";
-export type Action = "Hit" | "Stand" | "Double Down";
-
-export interface Card {
-  rank: Rank;
-  suit: Suit;
-}
-
-export interface Player {
-  id: string;
-  name: string;
-  kind: PlayerKind;
-  hand: Card[];
-  status: PlayerStatus;
-  doubledDown: boolean;
-  chips: number;
-  bet: number;
-  /** Insurance side bet placed this round; 0 when declined or not offered. */
-  insuranceBet: number;
-}
-
-export interface Dealer {
-  hand: Card[];
-  status: PlayerStatus;
-}
-
-export interface GameState {
-  players: Player[];
-  dealer: Dealer;
-  deck: Card[];
-  phase: RoundPhase;
-  activePlayerIndex: number | null;
-  outcomes: Record<string, Outcome>;
-  initialDeckSize: number;
-  reshuffleCount: number;
-  enableEmergencyReshuffle: boolean;
-}
-
-export interface PublicDealer {
-  hand: Array<Card | null>;
-  score: number | null;
-  status: PlayerStatus;
-}
-
-export interface PublicGameState {
-  players: Array<Player & { score: number }>;
-  dealer: PublicDealer;
-  phase: RoundPhase;
-  activePlayerId: string | null;
-  outcomes: Record<string, Outcome>;
-}
-
-export interface GameSetup {
-  humanNames: string[];
-  aiCount: number;
-}
-
-export interface GameOptions {
-  random?: () => number;
-  deck?: Card[];
-  enableEmergencyReshuffle?: boolean;
-  /** Bankroll available to each player before this round's bet is placed, keyed by player id. Defaults to STARTING_CHIPS. */
-  chips?: Record<string, number>;
-  /** Wager placed by each player for this round, keyed by player id. Defaults to the lesser of STANDARD_BET and that player's chips. */
-  bets?: Record<string, number>;
-}
+export * from "./domain/constants.js";
+export * from "./domain/types.js";
+import {
+  CARDS_PER_DECK, MAX_AI_PLAYERS, MAX_HUMAN_PLAYERS, MAX_NAME_LENGTH, MAX_PLAYERS,
+  MID_ROUND_RESHUFFLE_THRESHOLD, RANKS, STARTING_CHIPS, STANDARD_BET, SUITS,
+} from "./domain/constants.js";
+import type { Action, Card, GameOptions, GameSetup, GameState, Player, PlayerKind } from "./domain/types.js";
 
 export function createDeck(): Card[] {
   return SUITS.flatMap((suit) => RANKS.map((rank) => ({ rank, suit })));
