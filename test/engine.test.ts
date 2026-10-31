@@ -312,7 +312,7 @@ test("insurance is rejected without enough chips", () => {
   assert.equal(state.phase, "insurance");
 });
 
-test("doubling down doubles the bet and is rejected without enough chips", () => {
+test("doubling down charges the extra stake", () => {
   const scriptedDeck = [
     card("10"), // dealer hit -> busts
     card("K"),  // double-down card
