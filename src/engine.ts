@@ -17,47 +17,8 @@ import { createPlayers } from "./game/players.js";
 import { updateStatus } from "./game/status.js";
 export { getActivePlayer } from "./game/turns.js";
 import { advanceTurn } from "./game/turns.js";
-
-function draw(state: GameState): Card {
-  if (state.deck.length === 0 || (state.enableEmergencyReshuffle && state.deck.length <= MID_ROUND_RESHUFFLE_THRESHOLD)) {
-    state.deck = shuffle(createDecks(state.players.length));
-    state.reshuffleCount += 1;
-  }
-  const card = state.deck.pop();
-  if (!card) throw new Error("The deck is empty.");
-  return card;
-}
-
-function settle(state: GameState): void {
-  const dealerScore = scoreHand(state.dealer.hand);
-  const dealerBust = dealerScore > 21;
-  const dealerBlackjack = isBlackjack(state.dealer.hand);
-  state.outcomes = Object.fromEntries(
-    state.players.map((player) => {
-      const playerScore = scoreHand(player.hand);
-      let outcome: Outcome;
-      if (playerScore > 21) outcome = "lose";
-      else if (dealerBlackjack) outcome = isBlackjack(player.hand) ? "push" : "lose";
-      else if (dealerBust || playerScore > dealerScore) outcome = "win";
-      else if (isBlackjack(player.hand) && !dealerBlackjack) outcome = "win";
-      else if (playerScore < dealerScore) outcome = "lose";
-      else outcome = "push";
-      if (outcome === "win") player.chips += player.bet + winAmount(player);
-      else if (outcome === "push") player.chips += player.bet;
-      if (dealerBlackjack) player.chips += player.insuranceBet * 3;
-      return [player.id, outcome];
-    }),
-  );
-  state.phase = "complete";
-  state.activePlayerIndex = null;
-}
-
-function playDealer(state: GameState): void {
-  state.phase = "dealer";
-  while (scoreHand(state.dealer.hand) < 17) state.dealer.hand.push(draw(state));
-  state.dealer.status = scoreHand(state.dealer.hand) > 21 ? "busted" : "stood";
-  settle(state);
-}
+import { draw, playDealer } from "./game/dealer.js";
+export { settle } from "./game/settlement.js";
 
 export function createGame(
   setup: GameSetup,
