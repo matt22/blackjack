@@ -100,6 +100,8 @@ test("double down draws exactly one card and ends the player's turn", () => {
   assert.equal(state.players[0]?.doubledDown, true);
   assert.equal(state.players[0]?.hand.length, 3);
   assert.equal(state.players[0]?.status, "stood");
+  assert.equal(state.players[0]?.bet, 200);
+  assert.equal(state.players[0]?.chips, 800);
   assert.equal(state.activePlayerIndex, 1);
 });
 
@@ -310,25 +312,6 @@ test("insurance is rejected without enough chips", () => {
   );
   assert.throws(() => resolveInsurance(state, ["human-1"]), /cannot afford insurance/);
   assert.equal(state.phase, "insurance");
-});
-
-test("doubling down charges the extra stake", () => {
-  const scriptedDeck = [
-    card("10"), // dealer hit -> busts
-    card("K"),  // double-down card
-    card("6"),  // dealer second
-    card("5"),  // player second
-    card("10"), // dealer first
-    card("6"),  // player first
-  ];
-  const state = createGame(
-    { humanNames: ["Ada"], aiCount: 0 },
-    { deck: scriptedDeck, chips: { "human-1": 300 }, bets: { "human-1": 100 } },
-  );
-  assert.equal(state.players[0]?.chips, 200);
-  applyAction(state, "human-1", "Double Down");
-  assert.equal(state.players[0]?.bet, 200);
-  assert.equal(state.players[0]?.chips, 100 + 400);
 });
 
 test("doubling down throws when the extra stake would exceed available chips", () => {
