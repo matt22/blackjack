@@ -15,6 +15,8 @@ import { canTakeInsurance, insuranceCost, insuranceNet, winAmount } from "./bett
 import { validateBet, validateName, validateSetup } from "./betting/validation.js";
 import { createPlayers } from "./game/players.js";
 import { updateStatus } from "./game/status.js";
+export { getActivePlayer } from "./game/turns.js";
+import { advanceTurn } from "./game/turns.js";
 
 function draw(state: GameState): Card {
   if (state.deck.length === 0 || (state.enableEmergencyReshuffle && state.deck.length <= MID_ROUND_RESHUFFLE_THRESHOLD)) {
@@ -55,18 +57,6 @@ function playDealer(state: GameState): void {
   while (scoreHand(state.dealer.hand) < 17) state.dealer.hand.push(draw(state));
   state.dealer.status = scoreHand(state.dealer.hand) > 21 ? "busted" : "stood";
   settle(state);
-}
-
-function advanceTurn(state: GameState): void {
-  const start = (state.activePlayerIndex ?? -1) + 1;
-  for (let index = start; index < state.players.length; index += 1) {
-    if (state.players[index]?.status === "playing") {
-      state.activePlayerIndex = index;
-      return;
-    }
-  }
-  state.activePlayerIndex = null;
-  playDealer(state);
 }
 
 export function createGame(
@@ -131,7 +121,7 @@ function peekAndStartTurns(state: GameState): void {
     return;
   }
   state.activePlayerIndex = -1;
-  advanceTurn(state);
+  advanceTurn(state, playDealer);
 }
 
 export function applyAction(state: GameState, playerId: string, action: Action): GameState {
@@ -162,12 +152,8 @@ export function applyAction(state: GameState, playerId: string, action: Action):
     if (player.status === "playing") player.status = "stood";
   }
 
-  if (player.status !== "playing") advanceTurn(state);
+  if (player.status !== "playing") advanceTurn(state, playDealer);
   return state;
-}
-
-export function getActivePlayer(state: GameState): Player | null {
-  return state.activePlayerIndex === null ? null : (state.players[state.activePlayerIndex] ?? null);
 }
 
 export function getPublicState(state: GameState): PublicGameState {
