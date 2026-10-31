@@ -207,20 +207,14 @@ test("a natural blackjack pays 3:2, rounded down to whole chips", () => {
   assert.equal(state.players[1]?.chips, STARTING_CHIPS - 25 + 25 + 37);
 });
 
-test("a natural blackjack pushes against a dealer blackjack", () => {
-  const scriptedDeck = [
-    card("K"), // dealer second card
-    card("A"), // player second card
-    card("A"), // dealer up card
-    card("K"), // player first card
-  ];
-  const state = createGame({ humanNames: ["Ada"], aiCount: 0 }, { deck: scriptedDeck });
-  resolveInsurance(state, []);
-  assert.deepEqual(state.outcomes, { "human-1": "push" });
-  assert.equal(state.players[0]?.chips, STARTING_CHIPS);
-});
+test("dealer blackjack settles naturals and ends the round before player actions", () => {
+  const naturalPushState = createGame({ humanNames: ["Ada"], aiCount: 0 }, {
+    deck: [card("K"), card("A"), card("A"), card("K")],
+  });
+  resolveInsurance(naturalPushState, []);
+  assert.deepEqual(naturalPushState.outcomes, { "human-1": "push" });
+  assert.equal(naturalPushState.players[0]?.chips, STARTING_CHIPS);
 
-test("a dealer blackjack ends the round before anyone acts", () => {
   const scriptedDeck = [
     card("A"), // dealer hole card
     card("A"), // player 2 second card
