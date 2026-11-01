@@ -3,7 +3,6 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { chooseAiAction, chooseAiBet } from "./ai.js";
 import {
-  MAX_NAME_LENGTH,
   STANDARD_BET,
   STARTING_CHIPS,
   applyAction,
@@ -16,8 +15,6 @@ import {
   isBlackjack,
   resolveInsurance,
   scoreHand,
-  validateBet,
-  validateName,
   winAmount,
   type Action,
   type Card,
@@ -26,163 +23,24 @@ import {
   type Player,
 } from "./engine.js";
 import { createStandings, recordRound, type Standing } from "./standings.js";
-
-const SUIT_SYMBOL: Record<Card["suit"], string> = {
-  Clubs: "♣",
-  Diamonds: "♦",
-  Hearts: "♥",
-  Spades: "♠",
-};
-
-const ANSI = {
-  reset: "\x1b[0m",
-  cyan: "\x1b[36m",
-  yellow: "\x1b[33m",
-  green: "\x1b[32m",
-  red: "\x1b[31m",
-  magenta: "\x1b[35m",
-  gray: "\x1b[90m",
-};
-
-function paint(text: string, color: string): string {
-  return output.isTTY ? `${color}${text}${ANSI.reset}` : text;
-}
-
-function cardText(card: Card | null): string {
-  return card ? `${card.rank}${SUIT_SYMBOL[card.suit]}` : "??";
-}
-
-function handText(hand: readonly (Card | null)[]): string {
-  return hand.map(cardText).join(" ");
-}
-
-// Ranks are 1 character wide except "10" — right-padding to width 2 keeps every suit
-// symbol flush at the same column, so a 2 and a 10 line up. The hidden-card placeholder
-// gets the same 1-char-rank shape (" ??") so it doesn't sit 1 column off from real cards.
-function tableCardText(card: Card | null): string {
-  return card ? `${card.rank.padStart(2)}${SUIT_SYMBOL[card.suit]}` : " ??";
-}
-
-function tableCardCells(hand: readonly (Card | null)[], columnCount: number): string[] {
-  const cells = hand.map(tableCardText);
-  while (cells.length < columnCount) cells.push("");
-  return cells;
-}
-
-// "Loss", "Push", and "Bust" are all 4 letters; "Win" and "Bet" pad up to match so every
-// result's trailing emoji lands in the same column instead of trailing the shorter words.
-const RESULT_WORD_WIDTH = 4;
-
-interface ResultInfo {
-  word: string;
-  emoji: string;
-  sign: "+" | "-" | "";
-  digits: string;
-  color: string | null;
-}
-
-function outcomeInfo(outcome: Outcome, player: Pick<Player, "hand" | "bet">): ResultInfo {
-  if (outcome === "win") return { word: "Win", emoji: "🏆", sign: "+", digits: String(winAmount(player)), color: ANSI.green };
-  if (outcome === "lose") return { word: "Loss", emoji: "☠️", sign: "-", digits: String(player.bet), color: ANSI.red };
-  return { word: "Push", emoji: "⚖️", sign: "", digits: "0", color: ANSI.yellow };
-}
-
-/** Renders a result word (padded flush with its emoji) and a sign+$+digits amount, so both stay column-aligned across rows. */
-function formatResult(info: ResultInfo, digitWidth: number): { result: string; amount: string } {
-  const result = info.emoji ? `${info.word.padEnd(RESULT_WORD_WIDTH)} ${info.emoji}` : info.word;
-  const amount = `${info.sign || " "}$${info.digits.padStart(digitWidth)}`;
-  return { result, amount };
-}
-
-/** Formats a running total as sign+$+digits, e.g. for the dealer's money that can go negative. */
-function formatSignedAmount(amount: number): string {
-  const sign = amount > 0 ? "+" : amount < 0 ? "-" : " ";
-  return `${sign}$${Math.abs(amount)}`;
-}
-
-/** Formats a money standing, e.g. for the final money ranking. Only negative amounts (the dealer's) get a sign. */
-function formatMoney(amount: number): string {
-  return amount < 0 ? `-$${Math.abs(amount)}` : `$${amount}`;
-}
-
-const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
-// U+FE0F (variation selector-16) forces emoji-style rendering but occupies no column of its
-// own — counting it would overstate a line's true width by 1 for every icon it contains.
-const VS16_PATTERN = /️/g;
-
-/** Length as it will actually appear in the terminal, ignoring invisible ANSI color codes and VS16. */
-function visibleLength(text: string): number {
-  return text.replace(ANSI_PATTERN, "").replace(VS16_PATTERN, "").length;
-}
-
-const BANNER_INNER_WIDTH = 42;
-
-/** Measures banner text using the same character width as the CLI's fixed-width borders. */
-function bannerVisibleLength(text: string): number {
-  return visibleLength(text);
-}
-
-function bannerLine(text: string): string {
-  const width = bannerVisibleLength(text);
-  const leftPadding = Math.max(0, Math.floor((BANNER_INNER_WIDTH - width) / 2));
-  const rightPadding = Math.max(0, BANNER_INNER_WIDTH - width - leftPadding);
-  return `│${" ".repeat(leftPadding)}${text}${" ".repeat(rightPadding)}│`;
-}
-
-function showOpeningBanner(): void {
-  const lines = [
-    `╭${"─".repeat(BANNER_INNER_WIDTH)}╮`,
-    bannerLine("🍀🍀🍀 BLACKJACK 🍀🍀🍀"),
-    bannerLine("Chasing Fortune & Glory ... and 21!"),
-    `╰${"─".repeat(BANNER_INNER_WIDTH)}╯`,
-  ];
-  output.write(`\n${lines.join("\n")}\n`);
-}
-
-/** Top border of a box, sized so its total width matches `innerWidth` (the content width after "│ "). */
-function divider(title: string, innerWidth: number): string {
-  const dashCount = Math.max(1, innerWidth - visibleLength(title) - 2);
-  return paint(`╭─ ${title} ${"─".repeat(dashCount)}`, ANSI.cyan);
-}
-
-// The trailing U+FE0F forces wide emoji-style rendering, so every icon occupies a consistent
-// column width across terminals — without it, some fonts render 🎩 narrower than 🤖 or 👤,
-// throwing off the padding-based alignment of the columns that follow.
-// Each AI seat gets its own icon so up to three AI players stay distinguishable at a glance.
-const AI_ICONS = ["🤖", "😈", "👽"];
-
-// Icons a human player can pick by number (1–20); not yet offered in the CLI. Each is a single
-// emoji code point (no ZWJ sequences or skin tones) so it stays two columns wide, and none
-// repeat the dealer, AI, or default human icons.
-const HUMAN_ICON_CHOICES: Readonly<Record<number, string>> = {
-  1: "😎",
-  2: "🤠",
-  3: "🤓",
-  4: "🥳",
-  5: "😺",
-  6: "🐶",
-  7: "🦊",
-  8: "🐼",
-  9: "🐸",
-  10: "🐵",
-  11: "🦁",
-  12: "🐯",
-  13: "🐧",
-  14: "🦉",
-  15: "🦄",
-  16: "🐙",
-  17: "🦈",
-  18: "🦖",
-  19: "👻",
-  20: "💀",
-};
-
-/** Icon for a seat by id: "dealer", "human-N", or "ai-N". */
-function playerIcon(id: string): string {
-  const aiSeat = id.startsWith("ai-") ? Number(id.slice(3)) : null;
-  const icon = id === "dealer" ? "🎩" : aiSeat !== null ? (AI_ICONS[aiSeat - 1] ?? "🤖") : "👤";
-  return `${icon}️`;
-}
+import {
+  ANSI,
+  buildBox,
+  cardText,
+  formatMoney,
+  formatResult,
+  formatSignedAmount,
+  handText,
+  outcomeInfo,
+  paint,
+  showOpeningBanner,
+  tableCardCells,
+  visibleLength,
+  type Align,
+  type ResultInfo,
+} from "./cli/formatting.js";
+import { playerIcon, standingIcon } from "./cli/player-icons.js";
+import { askBet, askInteger, askName, askRebuyOrLeave } from "./cli/prompts.js";
 
 function showTable(state: GameState, title = "🎴 TABLE"): void {
   const view = getPublicState(state);
@@ -258,35 +116,6 @@ function showTable(state: GameState, title = "🎴 TABLE"): void {
     lines.splice(lines.length - 1, 0, `│ ${paint(`🚪 Sitting out: ${names}`, ANSI.gray)}`);
   }
   output.write(`\n${lines.join("\n")}\n`);
-}
-
-function standingIcon(standing: Pick<Standing, "id">): string {
-  return playerIcon(standing.id);
-}
-
-type Align = "left" | "right";
-
-function padCell(text: string, width: number, align: Align): string {
-  const gap = " ".repeat(Math.max(0, width - visibleLength(text)));
-  return align === "right" ? `${gap}${text}` : `${text}${gap}`;
-}
-
-/** Builds a bordered box whose column widths, and therefore total width, follow the widest header or cell in each column. */
-function buildBox(title: string, headers: string[], aligns: Align[], rows: string[][]): string[] {
-  const widths = headers.map((header, col) =>
-    Math.max(visibleLength(header), ...rows.map((row) => visibleLength(row[col] ?? ""))),
-  );
-  const formatRow = (cells: string[]) =>
-    `│ ${cells.map((cell, col) => padCell(cell, widths[col] ?? 0, aligns[col] ?? "left")).join("  ")}`;
-  const headerLine = formatRow(headers);
-  const innerWidth = visibleLength(headerLine) - 2;
-  return [
-    divider(title, innerWidth),
-    headerLine,
-    `│ ${"─".repeat(innerWidth)}`,
-    ...rows.map(formatRow),
-    `╰${"─".repeat(innerWidth + 1)}`,
-  ];
 }
 
 function standingsLines(standings: readonly Standing[], round: number): string[] {
@@ -414,56 +243,6 @@ function showReshuffles(state: GameState, previousCount: number): void {
   }
 }
 
-async function askInteger(prompt: string, minimum: number, maximum: number): Promise<number> {
-  while (true) {
-    const value = Number.parseInt((await rl.question(prompt)).trim(), 10);
-    if (Number.isInteger(value) && value >= minimum && value <= maximum) return value;
-    output.write(`Please enter a number from ${minimum} to ${maximum}.\n`);
-  }
-}
-
-async function askName(number: number): Promise<string> {
-  while (true) {
-    const name = await rl.question(`Name for human player ${number} (max ${MAX_NAME_LENGTH} characters): `);
-    try {
-      validateName(name);
-      return name.trim();
-    } catch (error) {
-      output.write(`${(error as Error).message}\n`);
-    }
-  }
-}
-
-async function askRebuyOrLeave(name: string): Promise<boolean> {
-  while (true) {
-    const answer = (
-      await rl.question(`\n${name} is out of chips! [R]ebuy for $${STARTING_CHIPS} or [L]eave the table? `)
-    ).trim().toLowerCase();
-    if (answer === "r" || answer === "rebuy") return true;
-    if (answer === "l" || answer === "leave") return false;
-    output.write("Please enter R to rebuy or L to leave.\n");
-  }
-}
-
-async function askBet(name: string, availableChips: number): Promise<number> {
-  if (availableChips === 0) {
-    output.write(`\n${name} is out of chips and sits out this round.\n`);
-    return 0;
-  }
-  while (true) {
-    const raw = (
-      await rl.question(`${name}, place your bet (chips: $${availableChips}, Enter for $${STANDARD_BET}): `)
-    ).trim();
-    const bet = raw === "" ? Math.min(STANDARD_BET, availableChips) : Number(raw);
-    try {
-      validateBet(bet, availableChips);
-      return bet;
-    } catch (error) {
-      output.write(`${(error as Error).message}\n`);
-    }
-  }
-}
-
 async function playRound(
   humanNames: string[],
   aiCount: number,
@@ -476,7 +255,7 @@ async function playRound(
   const bets: Record<string, number> = {};
   for (const [index, name] of humanNames.entries()) {
     const id = `human-${index + 1}`;
-    bets[id] = leftTable.has(id) ? 0 : await askBet(name, chips[id] ?? STARTING_CHIPS);
+    bets[id] = leftTable.has(id) ? 0 : await askBet(rl, name, chips[id] ?? STARTING_CHIPS);
   }
   for (let index = 0; index < aiCount; index += 1) {
     const id = `ai-${index + 1}`;
@@ -552,7 +331,7 @@ async function playRound(
   for (const player of state.players) {
     if (chips[player.id] !== 0 || leftTable.has(player.id)) continue;
     if (player.kind === "human") {
-      if (await askRebuyOrLeave(player.name)) {
+      if (await askRebuyOrLeave(rl, player.name)) {
         chips[player.id] = STARTING_CHIPS;
         output.write(`\n💰 ${player.name} rebuys for $${STARTING_CHIPS}.\n`);
       } else {
@@ -574,10 +353,10 @@ async function main(): Promise<void> {
   showOpeningBanner();
   output.write("\nHit, stand, or double down. Closest to 21 without going over wins.\n\n");
   showTableRules();
-  const humanCount = await askInteger("Number of human players (1-2): ", 1, 2);
+  const humanCount = await askInteger(rl, "Number of human players (1-2): ", 1, 2);
   const humanNames: string[] = [];
-  for (let index = 1; index <= humanCount; index += 1) humanNames.push(await askName(index));
-  const aiCount = await askInteger("Number of AI players (0-3): ", 0, 3);
+  for (let index = 1; index <= humanCount; index += 1) humanNames.push(await askName(rl, index));
+  const aiCount = await askInteger(rl, "Number of AI players (0-3): ", 0, 3);
   const initialState = createGame({ humanNames, aiCount });
   output.write(`\n🎴 Starting deck count: ${initialState.initialDeckSize / 52} (${initialState.initialDeckSize} cards).\n`);
   output.write(`💰 Each player starts with $${STARTING_CHIPS} in chips. Standard bet is $${STANDARD_BET}.\n`);
